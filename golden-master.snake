@@ -1,0 +1,30 @@
+// This is a comment. Our language uses Vox style.
+
+// 1. Variable declaration and basic types
+let grade = 15
+let admitted = true
+
+// 2. Definition of a recursive function
+// This function fills an array with the first even numbers
+function fillEvens(arr, index, max, value)
+    if index == max then
+        let finished = true
+    else
+        arr[index] = value
+        fillEvens(arr, index + 1, max, value + 2)
+    stop
+stop
+
+// 3. Main Program (Main Execution)
+let size = 3
+let myArray = new_array()
+
+// Execution of the function that modifies the array by reference
+fillEvens(myArray, 0, size, 0)
+
+// 4. Condition and array access for verification
+if myArray[0] == 0 and admitted then
+    let success = true
+else
+    let success = false
+stop
