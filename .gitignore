@@ -3,3 +3,5 @@ litlepy
 *.sh
 *.exe
 mongoose
+build/
+cmake-build-*/
