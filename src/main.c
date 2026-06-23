@@ -4,7 +4,7 @@
 #include "../utils/fileUtils.c"
 
 int main(int argc, char *argv[]) {
-    const char* sourceCode = readSourceCode(argv);
+    char* sourceCode = readSourceCode(argv);
 
     Lexer lexer;
     initLexer(&lexer, sourceCode);
@@ -32,6 +32,7 @@ int main(int argc, char *argv[]) {
 
     // 4. Mandatory heap memory cleanup
     freeAST(root);
+    free(sourceCode);
     printf("AST memory freed successfully.\n");
 
     return 0;

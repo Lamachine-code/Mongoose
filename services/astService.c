@@ -30,6 +30,15 @@ ASTNode* allocateVarDeclNode(const char* name, ASTNode* value) {
     return node;
 }
 
+// Factory for Unary Node
+ASTNode* allocateUnaryOpNode(const char* op, ASTNode* operand) {
+    ASTNode* node = ensureAlloc((ASTNode*)malloc(sizeof(ASTNode)), "UNARY_OP");
+    node->as.unary_op.op = op;  // (zero-copy)
+    node->type = NODE_UNARY_OP;
+    node->as.unary_op.operand = operand;
+    return node;
+}
+
 void freeAST(ASTNode* node) {
     if (node == NULL) return;
 
@@ -41,6 +50,9 @@ void freeAST(ASTNode* node) {
         case NODE_BINARY_OP:
             freeAST(node->as.binary_op.left);
             freeAST(node->as.binary_op.right);
+            break;
+        case NODE_UNARY_OP:
+            freeAST(node->as.unary_op.operand);
             break;
         case NODE_VAR_DECL:
             freeAST(node->as.var_decl.initializer);
@@ -65,12 +77,25 @@ Precedence getPrecedence(TokenType type) {
     }
 }
 
+// Ex:
+//        *
+//       / \
+//     (-)  2
+//      |
+//      5
+// Result: (* (- 5) 2)
 // Debug helper to print the tree in a structural form
 void printAST(ASTNode* node) {
     if (node->type == NODE_LITERAL) {
         printf("%g", node->as.literal.value);
         // printf(" ");
         // return;
+    }
+    else if (node->type == NODE_UNARY_OP) {
+        printf("(%c", *(node->as.unary_op.op));
+        printf(" ");
+        printAST(node->as.unary_op.operand);
+        printf(")");
     }
     else {
         printf("(%c", *(node->as.binary_op.op));

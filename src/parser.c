@@ -1,10 +1,24 @@
 #include "../services/parserService.c"
 #include "../services/astService.c"
+#include <stdio.h>
 
 ASTNode* parseExpression(Parser* parser, int precedence) {
 
-    Token lhs_token = consumeParser(parser, TOKEN_INT, "We were expecting a number.");
-    ASTNode* lhs = allocateLiteralNode( strtod(lhs_token.start, NULL) );
+    // Token lhs_token = consumeParser(parser, TOKEN_INT, "We were expecting a number.");
+    Token lhs_token = advanceParser(parser);
+    ASTNode* lhs = NULL;
+
+    if (lhs_token.type == TOKEN_INT) {
+        lhs = allocateLiteralNode( strtod(lhs_token.start, NULL) );
+
+    } else if (lhs_token.type == TOKEN_MINUS) {
+        ASTNode* operand = parseExpression(parser, PREC_UNARY);
+        lhs = allocateUnaryOpNode(lhs_token.start, operand);
+
+    } else {
+        fprintf(stderr, "Syntax Error (Line %d, Col %d)", lhs_token.line, lhs_token.col);
+        exit(EXIT_FAILURE);
+    }
 
     while (true)
     {

@@ -7,6 +7,7 @@
 typedef enum {
     NODE_LITERAL,
     NODE_BINARY_OP,
+    NODE_UNARY_OP,   // <--- New
     NODE_VAR_DECL
 } ASTNodeType;
 
@@ -35,13 +36,17 @@ typedef struct {
     ASTNode* right;    // Pointer to the right child
 } BinaryOpData;
 
-
-
-
 typedef struct {
     const char* identifier;     // Variable name (zero-copy or duplicated)
     ASTNode* initializer;       // Initialization expression (the child)
 } VarDeclData;
+
+typedef struct
+{
+    const char* op;
+    struct ASTNode* operand;  // operand can be a LiteralData (-3) or an entire expression ( -(3 + 2) )
+} UnaryOpData;
+
 
 // 3. The main polymorphic structure
 struct ASTNode {
@@ -50,6 +55,7 @@ struct ASTNode {
         LiteralData literal;
         BinaryOpData binary_op;
         VarDeclData var_decl;
+        UnaryOpData unary_op;
     } as; // 'as' gives clear access: node->as.literal.value
 };
 
