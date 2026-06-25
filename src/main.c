@@ -28,6 +28,7 @@ int main(int argc, char *argv[]) {
     // 3. Verify the tree
     printf("--- Generated syntax tree (parenthesized representation):\n ---");
     printAST(root);
+    genASTMermaidRep(root);
     printf("\n");
 
     // 4. Mandatory heap memory cleanup

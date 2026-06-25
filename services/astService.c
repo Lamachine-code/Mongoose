@@ -5,6 +5,8 @@
 #include "../utils/errorUtils.c"
 #include "../types/ast.h"
 #include "../types/lexer.h"
+#include "../utils/fileUtils.c"
+#include "../utils/charUtils.c"
 
 // Allocate memory to a node (ASTNode)
 ASTNode* allocateLiteralNode(double value) {
@@ -105,5 +107,40 @@ void printAST(ASTNode* node) {
         printAST(node->as.binary_op.right);
         printf(")");
     }
+}
+
+// Print edge in Mermaid syntax
+static void printMermaidEdge(FILE* fptr, ASTNode* parent, ASTNode* child) {
+    fprintf(fptr, "%p --> %p\n", parent, child);
+}
+
+// A debugging tool that generates the tree structure as a Mermaid structural graph.
+static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
+    if (node->type == NODE_LITERAL) {
+        fprintf(fptr, "%p[%g]\n", node, node->as.literal.value);
+    }
+    else if (node->type == NODE_UNARY_OP) {
+        fprintf(fptr, "%p[%c]\n", node, *(node->as.unary_op.op));
+        genASTMermaidRecursive(fptr, node->as.unary_op.operand);    // declare child
+        printMermaidEdge(fptr, node, node->as.unary_op.operand);
+    }
+    else {
+        char operatorChar = *(node->as.binary_op.op);
+        fprintf(fptr, "%p[%s]\n", node, operatorChar == '/' ? "÷" : *(charToString(operatorChar)));
+        genASTMermaidRecursive(fptr, node->as.binary_op.left);
+        printMermaidEdge(fptr, node, node->as.binary_op.left);
+        genASTMermaidRecursive(fptr, node->as.binary_op.right);
+        printMermaidEdge(fptr, node, node->as.binary_op.right);
+    }
+}
+
+void genASTMermaidRep(ASTNode* node) {
+    FILE* fptr;
+    fptr = safeFOpen("build/AST.mermaid", "w");
+    fprintf(fptr, "graph TD\n");
+
+    genASTMermaidRecursive(fptr, node);
+
+    fclose(fptr);
 }
 

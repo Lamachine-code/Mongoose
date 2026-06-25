@@ -1,3 +1,6 @@
+#ifndef CHARUTILS_C
+#define CHARUTILS_C
+
 #include <stdbool.h>
 
 bool isAlpha(char c) {
@@ -12,3 +15,11 @@ bool isDigit(char c) {
 bool isAphaNum(char c) {
     return isAlpha(c) || isDigit(c);
 }
+
+// Converts a single character into a string (character array). The function simply adds “\0” to the memory location immediately following the one occupied by that character.
+char* charToString(char c) {
+    char string[] = (char[]){c, '\0'};
+    return string;
+}
+
+#endif

@@ -2,4 +2,6 @@
 litlepy
 *.sh
 *.exe
+build/
+*temp*
 mongoose

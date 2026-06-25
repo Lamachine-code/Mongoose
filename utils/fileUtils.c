@@ -1,3 +1,6 @@
+#ifndef FILEUTILS_C
+#define FILEUTILS_C
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -39,4 +42,18 @@ char* readSourceCode(char *argv[]) {
     return readTxtFile(argv[1]);
 }
 
+// Ensure that the file pointer is not NULL
+FILE* safeFOpen (char* filename, char* mode) {
+    FILE* fptr;
+
+    fptr = fopen(filename, mode); // returns the address of the file loaded in the memory
+    if (!fptr) {
+        printf("Error: Could not open file.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return fptr;
+}
+
+#endif
 
