@@ -126,7 +126,9 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
     }
     else {
         char operatorChar = *(node->as.binary_op.op);
-        fprintf(fptr, "%p[%s]\n", node, operatorChar == '/' ? "÷" : *(charToString(operatorChar)));
+        char* operatorString = charToString(operatorChar);
+        fprintf(fptr, "%p[%s]\n", node, operatorChar == '/' ? "÷" : operatorString);
+        free(operatorString);
         genASTMermaidRecursive(fptr, node->as.binary_op.left);
         printMermaidEdge(fptr, node, node->as.binary_op.left);
         genASTMermaidRecursive(fptr, node->as.binary_op.right);

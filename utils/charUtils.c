@@ -18,8 +18,10 @@ bool isAphaNum(char c) {
 
 // Converts a single character into a string (character array). The function simply adds “\0” to the memory location immediately following the one occupied by that character.
 char* charToString(char c) {
-    char string[] = (char[]){c, '\0'};
-    return string;
+    char* buf = malloc(2);
+    buf[0] = c;
+    buf[1] = '\0';
+    return buf;
 }
 
 #endif
