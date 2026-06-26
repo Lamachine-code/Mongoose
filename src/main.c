@@ -1,22 +1,22 @@
-#include <stdio.h>
+#include "../utils/fileUtils.c"
 #include "lexer.c"
 #include "parser.c"
-#include "../utils/fileUtils.c"
+#include <stdio.h>
 
 int main(int argc, char *argv[]) {
     char* sourceCode = readSourceCode(argv);
 
-    Lexer lexer;
-    initLexer(&lexer, sourceCode);
-    
-    printf("--- Starting lexical analysis ---\n");
-    Token* tokens = generateTokensList(&lexer);
-    for (int i=0; i < lexer.tokenCount; i++) {
-        printf("[Line %d, Col %d] Type: %2d | Value: %.*s\n", 
-            tokens[i].line, tokens[i].col, tokens[i].type, tokens[i].length, tokens[i].start);
-    }
+	Lexer lexer;
+	initLexer(&lexer, sourceCode);
 
-    // 1. Initialize the parser
+	printf("--- Starting lexical analysis ---\n");
+	Token *tokens = generateTokensList(&lexer);
+	for (int i = 0; i < lexer.tokenCount; i++) {
+		printf("[Line %d, Col %d] Type: %2d | Value: %.*s\n", tokens[i].line,
+			tokens[i].col, tokens[i].type, tokens[i].length, tokens[i].start);
+	}
+
+	// 1. Initialize the parser
     Parser parser;
     initParser(&parser, tokens, lexer.tokenCount);
 
@@ -32,9 +32,13 @@ int main(int argc, char *argv[]) {
     printf("\n");
 
     // 4. Mandatory heap memory cleanup
-    freeAST(root);
+    freeAST(root);    
+	printf("AST memory freed successfully.\n");
+
     free(sourceCode);
-    printf("AST memory freed successfully.\n");
+	free(tokens);
+	sourceCode = NULL;
+	tokens = NULL;
 
     return 0;
 }

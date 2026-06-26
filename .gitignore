@@ -1,7 +1,12 @@
 *test*
-litlepy
+*temp*
 *.sh
 *.exe
 build/
-*temp*
-mongoose
+cmake-build-*/
+
+# Ignore CMake build artifacts
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake

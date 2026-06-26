@@ -4,42 +4,46 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-char* readTxtFile(const char* fileName) {
-    FILE *fptr = fopen(fileName, "r");
-    if (fptr == NULL) {
-        printf("Error: Could not open file.\n");
-        return NULL;
-    }
+char *readTxtFile(const char *fileName) {
+  FILE *fptr = fopen(fileName, "rb");
+  if (fptr == NULL) {
+    printf("Error: Could not open file.\n");
+    return NULL;
+  }
 
-    // Seek to the end to determine the size
-    fseek(fptr, 0, SEEK_END);
-    long size = ftell(fptr);
-    rewind(fptr);
-
-    // Allocate a buffer
-    char* buffer = malloc(size + 1);
-    if (!buffer) {
-        printf("Error: Memory allocation failed.\n");
-        fclose(fptr);
-        // return NULL;
-        exit(EXIT_FAILURE);
-    }
-
-    // Read the whole file
-    fread(buffer, 1, size, fptr);
-    buffer[size] = '\0'; // Terminate the string
-
+  // Seek to the end to determine the size
+  fseek(fptr, 0, SEEK_END);
+  long size = ftell(fptr);
+  if (size < 0) {
+    printf("Error: Could not determine file size.\n");
     fclose(fptr);
-    return buffer; // Caller must free the returned buffer
+    return NULL;
+  }
+  rewind(fptr);
+
+  // Allocate a buffer
+  char *buffer = malloc(size + 1);
+  if (!buffer) {
+    printf("Error: Memory allocation failed.\n");
+    fclose(fptr);
+    // return NULL;
+    exit(EXIT_FAILURE);
+  }
+
+  // Read the whole file
+  size_t bytesRead = fread(buffer, 1, size, fptr);
+  buffer[bytesRead] = '\0'; // Terminate the string
+
+  fclose(fptr);
+  return buffer; // Caller must free the returned buffer
 }
 
-
-char* readSourceCode(char *argv[]) {
-    if (!argv[1]) {
-        printf("Error: You didn't specify the name of the file.");
-        exit(EXIT_FAILURE);
-    }
-    return readTxtFile(argv[1]);
+char *readSourceCode(char *argv[]) {
+  if (!argv[1]) {
+    printf("Error: You didn't specify the name of the file.");
+    exit(EXIT_FAILURE);
+  }
+  return readTxtFile(argv[1]);
 }
 
 // Ensure that the file pointer is not NULL
