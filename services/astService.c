@@ -27,11 +27,11 @@ ASTNode *allocateBinaryOpNode(const char *op, ASTNode *left, ASTNode *right) {
   return node;
 }
 
-ASTNode *allocateVarDeclNode(const char *name, ASTNode *value) {
-  ASTNode *node =
-      ensureAlloc((ASTNode *)malloc(sizeof(ASTNode)), "NODE_VAR_DECL");
+ASTNode *allocateVarDeclNode(const char *name, int length, ASTNode *value) {
+  ASTNode *node = ensureAlloc((ASTNode *)malloc(sizeof(ASTNode)), "NODE_VAR_DECL");
   node->type = NODE_VAR_DECL;
   node->as.var_decl.identifier = name;
+  node->as.var_decl.length = length;
   node->as.var_decl.initializer = value;
   return node;
 }
@@ -104,6 +104,11 @@ void printAST(ASTNode *node) {
         printAST(node->as.unary_op.operand);
         printf(")");
     }
+    else if (node->type == NODE_VAR_DECL) {
+        printf("(let %.*s = ", node->as.var_decl.length, node->as.var_decl.identifier);
+        printAST(node->as.var_decl.initializer);
+        printf(")");
+    }
     else {
         printf("(%c", *(node->as.binary_op.op));
         printf(" ");
@@ -130,7 +135,11 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
         genASTMermaidRecursive(fptr, node->as.unary_op.operand);    // declare child
         printMermaidEdge(fptr, node, node->as.unary_op.operand);
     }
-    else {
+    else if (node->type == NODE_VAR_DECL) {
+        fprintf(fptr, "%p[let %.*s]\n", node, node->as.var_decl.length, node->as.var_decl.identifier);
+        genASTMermaidRecursive(fptr, node->as.var_decl.initializer);
+        printMermaidEdge(fptr, node, node->as.var_decl.initializer);
+    } else {
         char operatorChar = *(node->as.binary_op.op);
         char* operatorString = charToString(operatorChar);
         fprintf(fptr, "%p[%s]\n", node, operatorChar == '/' ? "÷" : operatorString);

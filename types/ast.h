@@ -7,7 +7,7 @@
 typedef enum {
     NODE_LITERAL,
     NODE_BINARY_OP,
-    NODE_UNARY_OP,   // <--- New
+    NODE_UNARY_OP,   
     NODE_VAR_DECL
 } ASTNodeType;
 
@@ -37,6 +37,7 @@ typedef struct {
 
 typedef struct {
     const char* identifier;     // Variable name (zero-copy or duplicated)
+    int length;                 // Lexeme string length tracking
     ASTNode* initializer;       // Initialization expression (the child)
 } VarDeclData;
 
@@ -62,7 +63,7 @@ struct ASTNode {
 ASTNode *allocateLiteralNode(double value);
 ASTNode *allocateBinaryOpNode(const char *op, ASTNode *left, ASTNode *right);
 ASTNode *allocateUnaryOpNode(const char *op, ASTNode *operand);
-ASTNode *allocateVarDeclNode(const char *name, ASTNode *value);
+ASTNode *allocateVarDeclNode(const char *name, int length, ASTNode *value);
 void freeAST(ASTNode *node);
 
 #endif // AST_H

@@ -1,8 +1,8 @@
-#include "../types/parser.h"
-#include "../types/ast.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include "../types/ast.h"
+#include "../types/parser.h"
 
 // Initialize the parser with the array of tokens provided by the Lexer
 void initParser(Parser* parser, Token* tokens, int tokenCount) {
@@ -64,4 +64,56 @@ Token consumeParser(Parser* parser, TokenType type, const char* message) {
     exit(EXIT_FAILURE);
 
     // TODO: Implement the logic here
+}
+
+// Updated Prefix Handling supporting nested grouping constraints
+// Intercepts the token stream, if the token is '(',
+// it resets the priority by calling a 
+// brand-new sub-expression with an initial priority of 
+// zero: parseExpression(parser, 0). Once this sub-expression is 
+// collected, it immediately requires a closing parenthesis ) 
+// via our secure plumbing function consumeParser
+ASTNode* parsePrefix(Parser* parser, Token token) {
+    if (token.type == TOKEN_INT) {
+        // Simple conversion wrapper logic
+        double val = strtod(token.start, NULL);
+        return allocateLiteralNode(val);
+
+    } else if (token.type == TOKEN_MINUS) {
+        ASTNode* operand = parseExpression(parser, PREC_UNARY);
+        return allocateUnaryOpNode(token.start, operand);
+
+    } else if (token.type == TOKEN_LPAREN) {
+        // Isolate evaluation environment priority
+        ASTNode* expression = parseExpression(parser, PREC_NONE);
+        
+        // Assertively close out grouping token window boundary
+        consumeParser(parser, TOKEN_RPAREN, "Syntax error: Unbalanced statement expression, expected ')'.\n");
+        return expression;
+    }
+    
+    fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected syntax initialization option parsed.\n", token.line, token.col);
+    exit(EXIT_FAILURE);
+    return NULL;
+}
+
+// Variable Declarations Compiler Layer
+// Extract the identifier, consume the “=” and call parseExpression(parser, 0)
+// to retrieve the tree of the initial value before validating the statement
+// parseVarDecl() retrieves this final tree and wraps it in a VarDecl node. Mission accomplished!
+ASTNode* parseVarDecl(Parser* parser) {
+    // Consume 'let' keyword token
+    consumeParser(parser, TOKEN_LET, "Expected 'let' statement identifier.\n");
+    
+    // Process and capture variable name via zero-copy architecture
+    Token varToken = consumeParser(parser, TOKEN_IDENTIFIER, "Expected variable name identifier.\n");
+    
+    // Validate assignment operator symbol
+    consumeParser(parser, TOKEN_ASSIGN, "Expected '=' assignment operator following variable name.\n");
+    
+    // Parse the subsequent value assignments
+    ASTNode* initializer = parseExpression(parser, PREC_NONE);  // Equivalent to: parseExpression(parser, 0)
+    
+    // package up into our Tagged Union payload configuration
+    return allocateVarDeclNode(varToken.start, varToken.length, initializer);
 }

@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     printf("--- Parsing expression: %s\n ---", sourceCode);
     
     // 2. Start Pratt parsing at the lowest precedence (PREC_NONE = 0)
-    ASTNode* root = parseExpression(&parser, PREC_NONE);
+    ASTNode* root = parseStatement(&parser);
 
     // 3. Verify the tree
     printf("--- Generated syntax tree (parenthesized representation):\n ---");
