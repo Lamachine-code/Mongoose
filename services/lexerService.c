@@ -1,8 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include "../types/lexer.h"
 #include <ctype.h>
+
+void printSyntaxErrMsg(int line, int col, char* msg);
 
 void initLexer(Lexer* lexer, const char* source) {
     lexer->source = source;
@@ -40,6 +43,12 @@ static char advance(Lexer* lexer) {
 // Examine (return) the current character without consuming it
 static char peek(Lexer* lexer) {
     return *(lexer->current);
+}
+
+// Examine (return) the current+1 character without consuming it
+static char peekNext(Lexer* lexer) {
+    char* nextChar = (char*) lexer->current + 1;
+    return *nextChar;
 }
 
 // Consume the current character only if it matches the expected one
@@ -86,15 +95,28 @@ void skipWhitespaceAndComments(Lexer* lexer) {
     }
 }
 
-Token number(Lexer* lexer) {
-    while (isdigit(peek(lexer)))
-    {
+static void consumeNumbers(Lexer* lexer) {
+    while (isdigit(peek(lexer))) {
         advance(lexer);
     }
+}
+
+Token number(Lexer* lexer) {
+    consumeNumbers(lexer);
 
     /* Implement logic to handle error cases */
 
-    Token token = makeToken(lexer, TOKEN_INT);
+    // Check for decimal part
+    if (peek(lexer) == '.') {
+        if (!isdigit(peekNext(lexer))) {
+            printSyntaxErrMsg(lexer->line, lexer->col + 1, "We were expecting integer at that point.\n");
+            exit(EXIT_FAILURE);
+        }
+        advance(lexer); // Consume the "." because the "consumeNumbers" function will not consume it. 
+        consumeNumbers(lexer);
+    }
+
+    Token token = makeToken(lexer, TOKEN_NUMBER);
     return token;
 }
 

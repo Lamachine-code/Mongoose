@@ -7,6 +7,7 @@
 #include "../utils/errorUtils.c"
 #include "../utils/fileUtils.c"
 #include "../utils/charUtils.c"
+#include "../utils/numberUtils.c"
 
 // Allocate memory to a node (ASTNode)
 ASTNode *allocateLiteralNode(double value) {
@@ -96,7 +97,11 @@ void printAST(ASTNode *node) {
         return;
 
     if (node->type == NODE_LITERAL) {
-        printf("%g", node->as.literal.value);
+        if (isInteger(node->as.literal.value)) {
+            printf("%.g", node->as.literal.value);        
+        } else {
+            printf("%.2f", node->as.literal.value);        
+        }
     }
     else if (node->type == NODE_UNARY_OP) {
         printf("(%c", *(node->as.unary_op.op));
@@ -128,7 +133,11 @@ static void printMermaidEdge(FILE* fptr, ASTNode* parent, ASTNode* child) {
 // A debugging tool that generates the tree structure as a Mermaid structural graph.
 static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
     if (node->type == NODE_LITERAL) {
-        fprintf(fptr, "%p[%g]\n", node, node->as.literal.value);
+        if (isInteger(node->as.literal.value)) {
+            fprintf(fptr, "%p[%g]\n", node, node->as.literal.value);
+        } else {
+            fprintf(fptr, "%p[%.2f]\n", node, node->as.literal.value);
+        }
     }
     else if (node->type == NODE_UNARY_OP) {
         fprintf(fptr, "%p[%c]\n", node, *(node->as.unary_op.op));

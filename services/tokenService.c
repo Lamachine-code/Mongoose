@@ -16,7 +16,7 @@ const char* tokenTypeToString(TokenType type) {
         case TOKEN_OR: return "OR";
         case TOKEN_NOT: return "NOT";
         case TOKEN_IDENTIFIER: return "IDENTIFIER";
-        case TOKEN_INT: return "INT";
+        case TOKEN_NUMBER: return "INT";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_STAR: return "STAR";

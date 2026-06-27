@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include "../types/ast.h"
 #include "../types/parser.h"
+#include "../types/lexer.h"
 
 // Initialize the parser with the array of tokens provided by the Lexer
 void initParser(Parser* parser, Token* tokens, int tokenCount) {
@@ -74,7 +75,7 @@ Token consumeParser(Parser* parser, TokenType type, const char* message) {
 // collected, it immediately requires a closing parenthesis ) 
 // via our secure plumbing function consumeParser
 ASTNode* parsePrefix(Parser* parser, Token token) {
-    if (token.type == TOKEN_INT) {
+    if (token.type == TOKEN_NUMBER) {
         // Simple conversion wrapper logic
         double val = strtod(token.start, NULL);
         return allocateLiteralNode(val);
@@ -88,7 +89,7 @@ ASTNode* parsePrefix(Parser* parser, Token token) {
         ASTNode* expression = parseExpression(parser, PREC_NONE);
         
         // Assertively close out grouping token window boundary
-        consumeParser(parser, TOKEN_RPAREN, "Syntax error: Unbalanced statement expression, expected ')'.\n");
+        consumeParser(parser, TOKEN_RPAREN, "Parsing Error: Unbalanced statement expression, expected ')'.\n");
         return expression;
     }
     

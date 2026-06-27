@@ -9,7 +9,8 @@ typedef enum {
 
     // Identifiers and Literals
     TOKEN_IDENTIFIER,   // ex: note, remplirPairs, new_array
-    TOKEN_INT,          // ex: 15, 0, 2
+    // TOKEN_INT,          // ex: 15, 0, 2
+    TOKEN_NUMBER,       // ex: 15, 0.5
     
     // Keywords
     TOKEN_LET, TOKEN_FUNCTION, TOKEN_IF, TOKEN_THEN, 

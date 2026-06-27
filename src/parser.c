@@ -19,7 +19,7 @@ ASTNode* parseStatement(Parser* parser) {
 // Ex: let total = (5 + 3) * 2
 ASTNode* parseExpression(Parser* parser, Precedence precedence) {
 
-    // Token lhs_token = consumeParser(parser, TOKEN_INT, "We were expecting a number.");
+    // Token lhs_token = consumeParser(parser, TOKEN_NUMBER, "We were expecting a number.");
     Token lhs_token = advanceParser(parser);
     ASTNode* lhs = parsePrefix(parser, lhs_token);
 
