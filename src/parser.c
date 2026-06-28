@@ -8,15 +8,26 @@
 // If it encounters the keyword “let” (token TOKEN_LET), it calls the parseVarDecl() function
 // If it does not find a statement keyword, it treats the line as a simple expression.
 ASTNode* parseStatement(Parser* parser) {
+    // Skip leading newlines
+    skipStatementSeparators(parser);
+
+    ASTNode* stmt = NULL;
     if (checkParser(parser, TOKEN_LET)) {
-        return parseVarDecl(parser);
+        stmt = parseVarDecl(parser);
+    } else if (checkParser(parser, TOKEN_IF)) {
+        stmt = parseIf(parser);
+    } else {
+        stmt = parseExpression(parser, PREC_NONE);
     }
-    // Fall back to standalone expressions if no matching keyword is detected
-    return parseExpression(parser, PREC_NONE);
+
+    // Consume trailing newline (end of instruction)
+    skipStatementSeparators(parser);
+
+    return stmt;
 }
 
-//      ↓
-// Ex: let total = (5 + 3) * 2
+
+
 ASTNode* parseExpression(Parser* parser, Precedence precedence) {
 
     // Token lhs_token = consumeParser(parser, TOKEN_NUMBER, "We were expecting a number.");
@@ -33,7 +44,7 @@ ASTNode* parseExpression(Parser* parser, Precedence precedence) {
 
         advanceParser(parser);
         ASTNode* rhs = parseExpression(parser, op_precedence);
-        lhs = allocateBinaryOpNode(op.start, lhs, rhs);
+        lhs = allocateBinaryOpNode(op.start, op.length, lhs, rhs);
     }
 
     return lhs;

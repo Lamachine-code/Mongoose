@@ -27,4 +27,5 @@ Token consumeParser(Parser* parser, TokenType type, const char* message);
 // Parsing functions
 ASTNode* parseStatement(Parser* parser);
 ASTNode* parseVarDecl(Parser* parser);
+ASTNode* parseBlock(Parser* parser);
 ASTNode* parseExpression(Parser* parser, Precedence precedence);

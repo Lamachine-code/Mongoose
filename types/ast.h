@@ -5,15 +5,18 @@
 
 // 1. Enumeration used as an identity badge (the tag)
 typedef enum {
-    NODE_LITERAL,
-    NODE_BINARY_OP,
-    NODE_UNARY_OP,   
-    NODE_VAR_DECL
+  NODE_LITERAL,
+  NODE_BINARY_OP,
+  NODE_UNARY_OP,   
+  NODE_VAR_DECL,
+  NODE_BLOCK,     /* <--- New Node Tag */
+  NODE_IF         /* <--- New Node Tag */
 } ASTNodeType;
 
 // Representation of precedence levels
 typedef enum {
   PREC_NONE,
+  PREC_CONP,
   PREC_TERM,   // + -
   PREC_FACTOR, // * /
   PREC_UNARY,  // - !
@@ -31,6 +34,7 @@ typedef struct {
 typedef struct {
   const char *op; // Operator (e.g. "+", "-", "*", "/")
   // char op[4];
+  int length;     // Lexeme string length tracking
   ASTNode *left;  // Pointer to the left child
   ASTNode *right; // Pointer to the right child
 } BinaryOpData;
@@ -47,6 +51,20 @@ typedef struct
   ASTNode* operand;  // operand can be a LiteralData (-3) or an entire expression ( -(3 + 2) )
 } UnaryOpData;
 
+/* Block node data structure for sequential statements */
+typedef struct {
+    struct ASTNode** statements; // Dynamic array of ASTNode pointers
+    int count;                  // Current statement index tracked
+    int capacity;               // Allocated capacity of the array
+} BlockData;
+
+/* If statement structural routing pointers */
+typedef struct {
+    struct ASTNode* condition;   // Evaluated expression tree
+    struct ASTNode* thenBranch;  // Rooted NODE_BLOCK for positive outcome
+    struct ASTNode* elseBranch;  // Optional NODE_BLOCK or NULL
+} IfData;
+
 
 // 3. The main polymorphic structure
 struct ASTNode {
@@ -56,14 +74,18 @@ struct ASTNode {
         BinaryOpData binary_op;
         VarDeclData var_decl;
         UnaryOpData unary_op;
+        BlockData block;
+        IfData if_stmt;
     } as; // 'as' gives clear access: node->as.literal.value
 };
 
 // Factory function signatures
 ASTNode *allocateLiteralNode(double value);
-ASTNode *allocateBinaryOpNode(const char *op, ASTNode *left, ASTNode *right);
+ASTNode *allocateBinaryOpNode(const char *op, int length, ASTNode *left, ASTNode *right);
 ASTNode *allocateUnaryOpNode(const char *op, ASTNode *operand);
 ASTNode *allocateVarDeclNode(const char *name, int length, ASTNode *value);
+ASTNode* allocateBlockNode(void);
+ASTNode* allocateIfNode(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
 void freeAST(ASTNode *node);
 
 #endif // AST_H

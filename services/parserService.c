@@ -5,6 +5,8 @@
 #include "../types/parser.h"
 #include "../types/lexer.h"
 
+void *ensureAlloc(void *ptr, const char *errorMsg);
+
 // Initialize the parser with the array of tokens provided by the Lexer
 void initParser(Parser* parser, Token* tokens, int tokenCount) {
     parser->tokens = tokens;
@@ -92,10 +94,16 @@ ASTNode* parsePrefix(Parser* parser, Token token) {
         consumeParser(parser, TOKEN_RPAREN, "Parsing Error: Unbalanced statement expression, expected ')'.\n");
         return expression;
     }
-    
+
     fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected syntax initialization option parsed.\n", token.line, token.col);
     exit(EXIT_FAILURE);
     return NULL;
+}
+
+void skipStatementSeparators(Parser* parser) {
+    while(peekParser(parser).type == TOKEN_NEWLINE) {
+        advanceParser(parser);
+    }
 }
 
 // Variable Declarations Compiler Layer
@@ -117,4 +125,89 @@ ASTNode* parseVarDecl(Parser* parser) {
     
     // package up into our Tagged Union payload configuration
     return allocateVarDeclNode(varToken.start, varToken.length, initializer);
+}
+
+/**
+ * Sequential block reader architecture
+ */
+ASTNode* parseBlock(Parser* parser) {
+    ASTNode* blockNode = allocateBlockNode();
+    
+    // The sequence loop continues parsing statements sequentially until it bumps
+    // into either an 'else' boundary or a terminating 'stop' token.
+    while (!checkParser(parser, TOKEN_STOP) && !checkParser(parser, TOKEN_ELSE)) {
+        // Safety lock check: stop infinite tracking loops if file EOF is breached
+        if (checkParser(parser, TOKEN_EOF)) {
+            fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected EOF reached inside unclosed statement block.\n", peekParser(parser).line, peekParser(parser).col);
+            freeAST(blockNode);
+            exit(1);
+        }
+        
+        // Parse the nested sequential statement tree node
+        ASTNode* stmt = parseStatement(parser);
+        if (stmt != NULL) {
+            
+            /* TODO: Handle dynamic resizing of blockNode->as.block.statements */
+            /* Track calculations: if (count == capacity) { double and realloc } */
+            if (blockNode->as.block.count == blockNode->as.block.capacity) {
+                // if statements is complete
+                blockNode->as.block.capacity *= 2;
+                ASTNode** temp = realloc(blockNode->as.block.statements, blockNode->as.block.capacity * sizeof(ASTNode*));
+                ensureAlloc(temp, "Reallocation block statements");
+                blockNode->as.block.statements = temp;
+            }
+            
+            // Append parsed tree node reference into statements array
+            blockNode->as.block.statements[blockNode->as.block.count++] = stmt;
+        }
+    }
+    
+    if (blockNode->as.block.count > 0) {
+        ASTNode** temp = realloc(blockNode->as.block.statements, blockNode->as.block.count * sizeof(ASTNode*));
+        ensureAlloc(temp, "Reallocation block statements");
+        blockNode->as.block.statements = temp;
+        blockNode->as.block.capacity = blockNode->as.block.count;
+    } else {
+        // If the block is completely empty, free the unused buffer array 
+        // and explicitly anchor it to NULL.
+        free(blockNode->as.block.statements);
+        blockNode->as.block.statements = NULL;
+        blockNode->as.block.capacity = 0;
+    }
+
+    return blockNode;
+}
+
+/**
+ * Conditional branching parser workflow skeleton
+ */
+ASTNode* parseIf(Parser* parser) {
+    // Step 1: Consume the leading TOKEN_IF keyword assertively
+    consumeParser(parser, TOKEN_IF, "Expected 'if' keyword to initiate branch layout.");
+    
+    // Step 2: Parse the evaluation conditional criteria expression tree
+    ASTNode* condition = parseExpression(parser, 0);
+    
+    // Step 3: Require explicit 'then' pairing structural keyword marker
+    consumeParser(parser, TOKEN_THEN, "Expected 'then' keyword following execution condition check.");
+    
+    // Step 4: Extract statements block for the positive path
+    ASTNode* thenBranch = parseBlock(parser);
+    
+    ASTNode* elseBranch = NULL;
+    
+    // Step 5: Check if lookahead pointer is identifying an 'else' optional path
+    if (checkParser(parser, TOKEN_ELSE)) {
+        // Advance past TOKEN_ELSE token
+        advanceParser(parser); 
+        
+        // Recurse into block compiler extraction loops for negative path
+        elseBranch = parseBlock(parser);
+    }
+    
+    // Step 6: Guarantee scope context enclosure by verifying closing 'stop' keyword
+    consumeParser(parser, TOKEN_STOP, "Expected matching structural 'stop' boundary keyword to seal condition block.");
+    
+    // Step 7: Factory structural parameters and forward node tracking upward
+    return allocateIfNode(condition, thenBranch, elseBranch);
 }

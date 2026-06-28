@@ -20,14 +20,14 @@ int main(int argc, char *argv[]) {
     Parser parser;
     initParser(&parser, tokens, lexer.tokenCount);
 
-    printf("--- Parsing expression: %s\n ---", sourceCode);
+    printf("--- Parsing expression ---\n%s \n", sourceCode);
     
     // 2. Start Pratt parsing at the lowest precedence (PREC_NONE = 0)
     ASTNode* root = parseStatement(&parser);
 
     // 3. Verify the tree
     printf("--- Generated syntax tree (parenthesized representation):\n ---");
-    printAST(root);
+    // printAST(root);
     genASTMermaidRep(root);
     printf("\n");
 
