@@ -136,7 +136,7 @@ Precedence getPrecedence(TokenType type) {
   switch (type) {
 	case TOKEN_EQUAL:
 	case TOKEN_NOTEQUAL:
-		return PREC_CONP;
+		return PREC_EQUALITY;
   case TOKEN_PLUS:
   case TOKEN_MINUS:
     return PREC_TERM;
@@ -160,34 +160,37 @@ void printAST(ASTNode *node) {
     if (node == NULL)
         return;
 
-    if (node->type == NODE_LITERAL) {
-        if (isInteger(node->as.literal.value)) {
-            printf("%.g", node->as.literal.value);        
-        } else {
-            printf("%.2f", node->as.literal.value);        
-        }
-    }
-    else if (node->type == NODE_UNARY_OP) {
-        printf("(%c", *(node->as.unary_op.op));
-        printf(" ");
-        printAST(node->as.unary_op.operand);
-        printf(")");
-    }
-    else if (node->type == NODE_VAR_DECL) {
-        printf("(let %.*s = ", node->as.var_decl.length, node->as.var_decl.identifier);
-        printAST(node->as.var_decl.initializer);
-        printf(")");
-    }
-    else if (node->type == NODE_IDENTIFIER) {
-        printf("%.*s", node->as.identifier.length, node->as.identifier.name);
-    }
-    else {
-        printf("(%.*s", node->as.binary_op.length, node->as.binary_op.op);
-        printf(" ");
-        printAST(node->as.binary_op.left);
-        printf(" ");
-        printAST(node->as.binary_op.right);
-        printf(")");
+    switch (node->type) {
+
+        case NODE_LITERAL:
+            if (isInteger(node->as.literal.value)) {
+                printf("%.g", node->as.literal.value);        
+            } else {
+                printf("%.2f", node->as.literal.value);        
+            }
+            break;
+        case NODE_UNARY_OP:
+            printf("(%c", *(node->as.unary_op.op));
+            printf(" ");
+            printAST(node->as.unary_op.operand);
+            printf(")");
+            break;
+        case NODE_VAR_DECL:
+            printf("(let %.*s = ", node->as.var_decl.length, node->as.var_decl.identifier);
+            printAST(node->as.var_decl.initializer);
+            printf(")");
+            break;
+        case NODE_IDENTIFIER:
+            printf("%.*s", node->as.identifier.length, node->as.identifier.name);
+            break;
+        default:
+            printf("(%.*s", node->as.binary_op.length, node->as.binary_op.op);
+            printf(" ");
+            printAST(node->as.binary_op.left);
+            printf(" ");
+            printAST(node->as.binary_op.right);
+            printf(")");
+            break;
     }
 }
 
@@ -199,24 +202,26 @@ static void printMermaidEdge(FILE* fptr, ASTNode* parent, ASTNode* child) {
 
 // A debugging tool that generates the tree structure as a Mermaid structural graph.
 static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
-    if (node->type == NODE_LITERAL) {
+    switch (node->type) {
+    
+    case NODE_LITERAL:
         if (isInteger(node->as.literal.value)) {
             fprintf(fptr, "%p[%g]\n", node, node->as.literal.value);
         } else {
             fprintf(fptr, "%p[%.2f]\n", node, node->as.literal.value);
         }
-    }
-    else if (node->type == NODE_UNARY_OP) {
+        break;
+    case NODE_UNARY_OP:
         fprintf(fptr, "%p[%c]\n", node, *(node->as.unary_op.op));
         genASTMermaidRecursive(fptr, node->as.unary_op.operand);    // declare child
         printMermaidEdge(fptr, node, node->as.unary_op.operand);
-    }
-    else if (node->type == NODE_VAR_DECL) {
+        break;
+    case NODE_VAR_DECL:
         fprintf(fptr, "%p[let %.*s]\n", node, node->as.var_decl.length, node->as.var_decl.identifier);
         genASTMermaidRecursive(fptr, node->as.var_decl.initializer);
         printMermaidEdge(fptr, node, node->as.var_decl.initializer);
-	}
-	else if (node->type == NODE_IF) {
+        break;
+	case NODE_IF:
 		fprintf(fptr, "%p[IF]\n", node);
 		fprintf(fptr, "%p[THEN]\n", node->as.if_stmt.thenBranch);
 		printMermaidEdge(fptr, node, node->as.if_stmt.thenBranch);
@@ -228,22 +233,27 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
 			printMermaidEdge(fptr, node, node->as.if_stmt.elseBranch);
 			genASTMermaidRecursive(fptr, node->as.if_stmt.elseBranch);			
 		}
-	}
-	else if (node->type == NODE_BLOCK) {
+        break;
+	case NODE_BLOCK:
 		for (int i=0; i < node->as.block.count; i++) {
 			genASTMermaidRecursive(fptr, node->as.block.statements[i]);
 			printMermaidEdge(fptr, node, node->as.block.statements[i]);
 		}
-	}
-    else if (node->type == NODE_IDENTIFIER) {
+        break;
+    case NODE_IDENTIFIER:
         fprintf(fptr, "%p[%.*s]\n", node, node->as.identifier.length, node->as.identifier.name);
-    }
-    else {
-		fprintf(fptr, "%p[%.*s]\n", node, node->as.binary_op.length, *(node->as.binary_op.op) == '/' ? "÷" : node->as.binary_op.op);
+        break;
+    default:
+        if (*(node->as.binary_op.op) == '/') {
+            fprintf(fptr, "%p[%s]\n", node, "÷");
+        } else {
+		    fprintf(fptr, "%p[%.*s]\n", node, node->as.binary_op.length, node->as.binary_op.op);
+        }
         genASTMermaidRecursive(fptr, node->as.binary_op.left);
         printMermaidEdge(fptr, node, node->as.binary_op.left);
         genASTMermaidRecursive(fptr, node->as.binary_op.right);
         printMermaidEdge(fptr, node, node->as.binary_op.right);
+        break;
     }
 }
 

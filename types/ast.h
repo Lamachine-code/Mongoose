@@ -17,7 +17,7 @@ typedef enum {
 // Representation of precedence levels
 typedef enum {
   PREC_NONE,
-  PREC_CONP,
+  PREC_EQUALITY,
   PREC_TERM,   // + -
   PREC_FACTOR, // * /
   PREC_UNARY,  // - !

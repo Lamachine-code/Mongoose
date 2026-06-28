@@ -95,7 +95,6 @@ ASTNode* parsePrefix(Parser* parser, Token token) {
         return expression;
 
     } else if (token.type == TOKEN_IDENTIFIER) {
-        printf("Identifier: %.*s\n", token.length, token.start);
         return allocateIdentifierNode(token);
     }
 
