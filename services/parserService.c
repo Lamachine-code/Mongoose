@@ -93,6 +93,10 @@ ASTNode* parsePrefix(Parser* parser, Token token) {
         // Assertively close out grouping token window boundary
         consumeParser(parser, TOKEN_RPAREN, "Parsing Error: Unbalanced statement expression, expected ')'.\n");
         return expression;
+
+    } else if (token.type == TOKEN_IDENTIFIER) {
+        printf("Identifier: %.*s\n", token.length, token.start);
+        return allocateIdentifierNode(token);
     }
 
     fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected syntax initialization option parsed.\n", token.line, token.col);

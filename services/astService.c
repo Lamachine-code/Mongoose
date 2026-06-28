@@ -9,6 +9,13 @@
 #include "../utils/charUtils.c"
 #include "../utils/numberUtils.c"
 
+#define NEW_NODE(kind) \
+    ( { ASTNode* n = malloc(sizeof(ASTNode)); \
+        ensureAlloc(n, #kind); \
+        n->type = kind; \
+        n; } )
+
+
 // Allocate memory to a node (ASTNode)
 ASTNode *allocateLiteralNode(double value) {
   ASTNode *node =
@@ -70,6 +77,13 @@ ASTNode* allocateIfNode(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBr
     return node;
 }
 
+ASTNode* allocateIdentifierNode(Token token) {
+    ASTNode* node = NEW_NODE(NODE_IDENTIFIER);
+    node->as.identifier.name = token.start;
+    node->as.identifier.length = token.length;
+    return node;
+}
+
 static void freeBlockNode(ASTNode* blockNode) {
     // Step 1: Deeply clean every child expression/statement captured
     for (int i=0; i < blockNode->as.block.count; i++) {
@@ -104,8 +118,11 @@ void freeAST(ASTNode* node) {
                 freeAST(node->as.if_stmt.elseBranch);
             }
             break;
+        case NODE_IDENTIFIER:
+            // No children or dynamically allocated internal pointers to free
+            break;
         case NODE_BLOCK: {
-						freeBlockNode(node);
+            freeBlockNode(node);
             break;
         }
     }
@@ -161,6 +178,9 @@ void printAST(ASTNode *node) {
         printAST(node->as.var_decl.initializer);
         printf(")");
     }
+    else if (node->type == NODE_IDENTIFIER) {
+        printf("%.*s", node->as.identifier.length, node->as.identifier.name);
+    }
     else {
         printf("(%.*s", node->as.binary_op.length, node->as.binary_op.op);
         printf(" ");
@@ -215,6 +235,9 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
 			printMermaidEdge(fptr, node, node->as.block.statements[i]);
 		}
 	}
+    else if (node->type == NODE_IDENTIFIER) {
+        fprintf(fptr, "%p[%.*s]\n", node, node->as.identifier.length, node->as.identifier.name);
+    }
     else {
 		fprintf(fptr, "%p[%.*s]\n", node, node->as.binary_op.length, *(node->as.binary_op.op) == '/' ? "÷" : node->as.binary_op.op);
         genASTMermaidRecursive(fptr, node->as.binary_op.left);

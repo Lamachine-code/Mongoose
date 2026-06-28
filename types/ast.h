@@ -9,8 +9,9 @@ typedef enum {
   NODE_BINARY_OP,
   NODE_UNARY_OP,   
   NODE_VAR_DECL,
-  NODE_BLOCK,     /* <--- New Node Tag */
-  NODE_IF         /* <--- New Node Tag */
+  NODE_BLOCK,
+  NODE_IF,
+  NODE_IDENTIFIER   
 } ASTNodeType;
 
 // Representation of precedence levels
@@ -53,16 +54,22 @@ typedef struct
 
 /* Block node data structure for sequential statements */
 typedef struct {
-    struct ASTNode** statements; // Dynamic array of ASTNode pointers
-    int count;                  // Current statement index tracked
-    int capacity;               // Allocated capacity of the array
+  struct ASTNode** statements;  // Dynamic array of ASTNode pointers
+  int count;                    // Current statement index tracked
+  int capacity;                 // Allocated capacity of the array
 } BlockData;
+
+typedef struct {
+  const char* name;
+  int length;
+} IdentifierData;
+
 
 /* If statement structural routing pointers */
 typedef struct {
-    struct ASTNode* condition;   // Evaluated expression tree
-    struct ASTNode* thenBranch;  // Rooted NODE_BLOCK for positive outcome
-    struct ASTNode* elseBranch;  // Optional NODE_BLOCK or NULL
+  struct ASTNode* condition;   // Evaluated expression tree
+  struct ASTNode* thenBranch;  // Rooted NODE_BLOCK for positive outcome
+  struct ASTNode* elseBranch;  // Optional NODE_BLOCK or NULL
 } IfData;
 
 
@@ -76,6 +83,7 @@ struct ASTNode {
         UnaryOpData unary_op;
         BlockData block;
         IfData if_stmt;
+		IdentifierData identifier;
     } as; // 'as' gives clear access: node->as.literal.value
 };
 
@@ -86,6 +94,7 @@ ASTNode *allocateUnaryOpNode(const char *op, ASTNode *operand);
 ASTNode *allocateVarDeclNode(const char *name, int length, ASTNode *value);
 ASTNode* allocateBlockNode(void);
 ASTNode* allocateIfNode(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
+ASTNode* allocateIdentifierNode(Token token);
 void freeAST(ASTNode *node);
 
 #endif // AST_H
