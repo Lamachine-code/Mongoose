@@ -63,7 +63,7 @@ Token consumeParser(Parser* parser, TokenType type, const char* message) {
     // 3. If not: print the message with fprintf(stderr, ...) and call exit(1)
     // Properly write to the standard error stream (stderr)
     Token currentToken = peekParser(parser);
-    fprintf(stderr, "Syntax error : %s (Line %d, Col %d) \n", message, currentToken.line, currentToken.col);
+    fprintf(stderr, "Parsing Error (Line %d, Col %d): %s\n", currentToken.line, currentToken.col, message);
     exit(EXIT_FAILURE);
 
     // TODO: Implement the logic here
@@ -77,30 +77,34 @@ Token consumeParser(Parser* parser, TokenType type, const char* message) {
 // collected, it immediately requires a closing parenthesis ) 
 // via our secure plumbing function consumeParser
 ASTNode* parsePrefix(Parser* parser, Token token) {
-    if (token.type == TOKEN_NUMBER) {
-        // Simple conversion wrapper logic
-        double val = strtod(token.start, NULL);
-        return allocateLiteralNode(val);
 
-    } else if (token.type == TOKEN_MINUS) {
-        ASTNode* operand = parseExpression(parser, PREC_UNARY);
-        return allocateUnaryOpNode(token.start, operand);
+    switch (token.type) {
 
-    } else if (token.type == TOKEN_LPAREN) {
-        // Isolate evaluation environment priority
-        ASTNode* expression = parseExpression(parser, PREC_NONE);
-        
-        // Assertively close out grouping token window boundary
-        consumeParser(parser, TOKEN_RPAREN, "Parsing Error: Unbalanced statement expression, expected ')'.\n");
-        return expression;
+        case TOKEN_NUMBER:
+            // Simple conversion wrapper logic
+            double val = strtod(token.start, NULL);
+            return allocateLiteralNode(val);
 
-    } else if (token.type == TOKEN_IDENTIFIER) {
-        return allocateIdentifierNode(token);
+        case TOKEN_MINUS:
+        case TOKEN_NOT:
+            ASTNode* operand = parseExpression(parser, PREC_UNARY);
+            return allocateUnaryOpNode(token.start, token.length, operand);
+
+        case TOKEN_LPAREN:
+            // Isolate evaluation environment priority
+            ASTNode* expression = parseExpression(parser, PREC_NONE);
+            // Assertively close out grouping token window boundary
+            consumeParser(parser, TOKEN_RPAREN, "Parsing Error: Unbalanced statement expression, expected ')'.\n");
+            return expression;
+
+        case TOKEN_IDENTIFIER:
+            return allocateIdentifierNode(token);
+
+        default:
+            fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected syntax initialization option parsed.\n", token.line, token.col);
+            exit(EXIT_FAILURE);
+            return NULL;
     }
-
-    fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected syntax initialization option parsed.\n", token.line, token.col);
-    exit(EXIT_FAILURE);
-    return NULL;
 }
 
 void skipStatementSeparators(Parser* parser) {

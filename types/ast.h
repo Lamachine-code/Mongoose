@@ -17,7 +17,9 @@ typedef enum {
 // Representation of precedence levels
 typedef enum {
   PREC_NONE,
+  PREC_LOGICAL_OP,  // 
   PREC_EQUALITY,
+  PREC_COMP,
   PREC_TERM,   // + -
   PREC_FACTOR, // * /
   PREC_UNARY,  // - !
@@ -49,6 +51,7 @@ typedef struct {
 typedef struct
 {
   const char* op;
+  int length;
   ASTNode* operand;  // operand can be a LiteralData (-3) or an entire expression ( -(3 + 2) )
 } UnaryOpData;
 
@@ -90,7 +93,7 @@ struct ASTNode {
 // Factory function signatures
 ASTNode *allocateLiteralNode(double value);
 ASTNode *allocateBinaryOpNode(const char *op, int length, ASTNode *left, ASTNode *right);
-ASTNode *allocateUnaryOpNode(const char *op, ASTNode *operand);
+ASTNode *allocateUnaryOpNode(const char *op, int length, ASTNode *operand);
 ASTNode *allocateVarDeclNode(const char *name, int length, ASTNode *value);
 ASTNode* allocateBlockNode(void);
 ASTNode* allocateIfNode(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);

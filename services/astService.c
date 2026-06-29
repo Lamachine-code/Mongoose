@@ -46,10 +46,10 @@ ASTNode *allocateVarDeclNode(const char *name, int length, ASTNode *value) {
 }
 
 // Factory for Unary Node
-ASTNode* allocateUnaryOpNode(const char* op, ASTNode* operand) {
-    ASTNode* node = ensureAlloc((ASTNode*)malloc(sizeof(ASTNode)), "UNARY_OP");
+ASTNode* allocateUnaryOpNode(const char* op, int length, ASTNode* operand) {
+    ASTNode* node = NEW_NODE(NODE_UNARY_OP);
     node->as.unary_op.op = op;  // (zero-copy)
-    node->type = NODE_UNARY_OP;
+    node->as.unary_op.length = length;
     node->as.unary_op.operand = operand;
     return node;
 }
@@ -133,19 +133,27 @@ void freeAST(ASTNode* node) {
 
 // Small utility function to assign precedence to our tokens
 Precedence getPrecedence(TokenType type) {
-  switch (type) {
-	case TOKEN_EQUAL:
-	case TOKEN_NOTEQUAL:
-		return PREC_EQUALITY;
-  case TOKEN_PLUS:
-  case TOKEN_MINUS:
-    return PREC_TERM;
-  case TOKEN_STAR:
-  case TOKEN_SLASH:
-    return PREC_FACTOR;
-  default:
-    return PREC_NONE;
-  }
+	switch (type) {
+        case TOKEN_AND:
+        case TOKEN_OR:
+            return PREC_LOGICAL_OP;
+		case TOKEN_EQUAL:
+		case TOKEN_NOTEQUAL:
+			return PREC_EQUALITY;
+        case TOKEN_GT:
+        case TOKEN_LT:
+        case TOKEN_GTEQ:
+        case TOKEN_LTEQ:
+            return PREC_COMP;
+		case TOKEN_PLUS:
+		case TOKEN_MINUS:
+			return PREC_TERM;
+		case TOKEN_STAR:
+		case TOKEN_SLASH:
+			return PREC_FACTOR;
+		default:
+			return PREC_NONE;
+	}
 }
 
 // Ex:
@@ -170,7 +178,7 @@ void printAST(ASTNode *node) {
             }
             break;
         case NODE_UNARY_OP:
-            printf("(%c", *(node->as.unary_op.op));
+            printf("(%.*s", node->as.unary_op.length, node->as.unary_op.op);
             printf(" ");
             printAST(node->as.unary_op.operand);
             printf(")");
@@ -212,7 +220,7 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
         }
         break;
     case NODE_UNARY_OP:
-        fprintf(fptr, "%p[%c]\n", node, *(node->as.unary_op.op));
+        fprintf(fptr, "%p[%.*s]\n", node, node->as.unary_op.length, node->as.unary_op.op);
         genASTMermaidRecursive(fptr, node->as.unary_op.operand);    // declare child
         printMermaidEdge(fptr, node, node->as.unary_op.operand);
         break;
