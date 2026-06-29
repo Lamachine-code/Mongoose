@@ -15,6 +15,18 @@ int strLen(char *string) {
   return length;
 }
 
+int tokenLen(const char *string) {
+  int length = 0;
+  int i = 0;
+
+  while (string[i] != ' ' && string[i] != '\0') {
+    i++;
+    length++;
+  }
+
+  return length;
+}
+
 // Compare short strings
 // Already exists in <string.h> as "strcmp"
 bool strComp(const char *str1, const char *str2) {

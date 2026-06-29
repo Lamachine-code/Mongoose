@@ -100,6 +100,10 @@ ASTNode* parsePrefix(Parser* parser, Token token) {
         case TOKEN_IDENTIFIER:
             return allocateIdentifierNode(token);
 
+        case TOKEN_TRUE:
+        case TOKEN_FALSE:
+            return allocateBoolNode(token);
+
         default:
             fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected syntax initialization option parsed.\n", token.line, token.col);
             exit(EXIT_FAILURE);

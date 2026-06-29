@@ -20,11 +20,13 @@ typedef enum {
     TOKEN_AND, TOKEN_OR, TOKEN_NOT,
 
     // Operators and Punctuation
-    TOKEN_PLUS, TOKEN_MINUS, TOKEN_STAR, TOKEN_SLASH, // + - * /
-    TOKEN_ASSIGN, TOKEN_EQUAL, TOKEN_NOTEQUAL,        // = == !=
-    TOKEN_LT, TOKEN_GT, TOKEN_LTEQ, TOKEN_GTEQ,       // < > <= >=
-    TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_COMMA,          // ( ) ,
-    TOKEN_LBRACKET, TOKEN_RBRACKET                    // [ ]
+    TOKEN_PLUS, TOKEN_MINUS, TOKEN_STAR,                // + - * 
+    TOKEN_SLASH, TOKEN_MODULO, TOKEN_POWER,             // / % **
+    TOKEN_FLOOR_DIV,                                    // //
+    TOKEN_ASSIGN, TOKEN_EQUAL, TOKEN_NOTEQUAL,          // = == !=
+    TOKEN_LT, TOKEN_GT, TOKEN_LTEQ, TOKEN_GTEQ,         // < > <= >=
+    TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_COMMA,            // ( ) ,
+    TOKEN_LBRACKET, TOKEN_RBRACKET                      // [ ]
 } TokenType;
 
 typedef struct {

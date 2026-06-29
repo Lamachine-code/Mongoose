@@ -11,7 +11,8 @@ typedef enum {
   NODE_VAR_DECL,
   NODE_BLOCK,
   NODE_IF,
-  NODE_IDENTIFIER   
+  NODE_IDENTIFIER,
+  NODE_BOOL 
 } ASTNodeType;
 
 // Representation of precedence levels
@@ -21,8 +22,9 @@ typedef enum {
   PREC_EQUALITY,
   PREC_COMP,
   PREC_TERM,   // + -
-  PREC_FACTOR, // * /
+  PREC_FACTOR, // * / %
   PREC_UNARY,  // - !
+  PREC_POWER,  // ^
   PREC_PRIMARY
 } Precedence;
 
@@ -75,19 +77,24 @@ typedef struct {
   struct ASTNode* elseBranch;  // Optional NODE_BLOCK or NULL
 } IfData;
 
+typedef struct {
+  bool value; // 
+} BooleanData;
+
 
 // 3. The main polymorphic structure
 struct ASTNode {
-    ASTNodeType type;  // The discriminant (the tag)
-    union {
-        LiteralData literal;
-        BinaryOpData binary_op;
-        VarDeclData var_decl;
-        UnaryOpData unary_op;
-        BlockData block;
-        IfData if_stmt;
-		IdentifierData identifier;
-    } as; // 'as' gives clear access: node->as.literal.value
+  ASTNodeType type;  // The discriminant (the tag)
+  union {
+    LiteralData literal;
+    BinaryOpData binary_op;
+    VarDeclData var_decl;
+    UnaryOpData unary_op;
+    BlockData block;
+    IfData if_stmt;
+    IdentifierData identifier;
+    BooleanData boolean;
+  } as; // 'as' gives clear access: node->as.literal.value
 };
 
 // Factory function signatures
@@ -98,6 +105,7 @@ ASTNode *allocateVarDeclNode(const char *name, int length, ASTNode *value);
 ASTNode* allocateBlockNode(void);
 ASTNode* allocateIfNode(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
 ASTNode* allocateIdentifierNode(Token token);
+ASTNode* allocateBoolNode(Token token);
 void freeAST(ASTNode *node);
 
 #endif // AST_H

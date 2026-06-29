@@ -51,8 +51,9 @@ static char peekNext(Lexer* lexer) {
     return *nextChar;
 }
 
-// Consume the current character only if it matches the expected one
+// Consume the current character only if it matches the expected one.
 // Consuming a character: read it and then increment "lexer.current".
+// Returns "true" if the current character matches the expected one.
 static bool match(Lexer* lexer, char expected) {
     if (isAtEnd(lexer)) return false;
     if (*(lexer->current) != expected) return false;
@@ -188,6 +189,7 @@ Token nextToken(Lexer* lexer) {
     if (isalpha(c)) return identifierOrKeyword(lexer);
     if (isdigit(c)) return number(lexer);
 
+    // Single-character operators
     switch (c) {
         case '\n':
             // This version had an issue with line numbering
@@ -204,7 +206,8 @@ Token nextToken(Lexer* lexer) {
         case '+': return makeToken(lexer, TOKEN_PLUS);
         case '-': return makeToken(lexer, TOKEN_MINUS);
         case '*': return makeToken(lexer, TOKEN_STAR);
-        case '/': return makeToken(lexer, TOKEN_SLASH);
+        case '%': return makeToken(lexer, TOKEN_MODULO);
+        case '^': return makeToken(lexer, TOKEN_POWER);
         
         // Operators that may be two-character tokens
         case '=': 
@@ -216,6 +219,8 @@ Token nextToken(Lexer* lexer) {
             return match(lexer, '=') ? makeToken(lexer, TOKEN_LTEQ) : makeToken(lexer, TOKEN_LT);
         case '>': 
             return match(lexer, '=') ? makeToken(lexer, TOKEN_GTEQ) : makeToken(lexer, TOKEN_GT);
+        case '/': 
+            return match(lexer, '/') ? makeToken(lexer, TOKEN_FLOOR_DIV) : makeToken(lexer, TOKEN_SLASH);
     }
 
     return makeToken(lexer, TOKEN_ERROR);

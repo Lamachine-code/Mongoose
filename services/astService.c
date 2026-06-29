@@ -8,6 +8,7 @@
 #include "../utils/fileUtils.c"
 #include "../utils/charUtils.c"
 #include "../utils/numberUtils.c"
+#include "../utils/stringUtils.c"
 
 #define NEW_NODE(kind) \
     ( { ASTNode* n = malloc(sizeof(ASTNode)); \
@@ -63,7 +64,7 @@ ASTNode* allocateBlockNode(void) {
     if (!node->as.block.statements) {
         fprintf(stderr, "Error: Memory allocation failed for block statements vector.\n");
         free(node);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     return node;
 }
@@ -81,6 +82,12 @@ ASTNode* allocateIdentifierNode(Token token) {
     ASTNode* node = NEW_NODE(NODE_IDENTIFIER);
     node->as.identifier.name = token.start;
     node->as.identifier.length = token.length;
+    return node;
+}
+
+ASTNode* allocateBoolNode(Token token) {
+    ASTNode* node = NEW_NODE(NODE_BOOL);
+    node->as.boolean.value = (*(token.start) == 't'); // true if starts with 't'
     return node;
 }
 
@@ -125,6 +132,8 @@ void freeAST(ASTNode* node) {
             freeBlockNode(node);
             break;
         }
+        case NODE_BOOL:
+            break;
     }
 
     // Finally, free the current parent node
@@ -150,7 +159,11 @@ Precedence getPrecedence(TokenType type) {
 			return PREC_TERM;
 		case TOKEN_STAR:
 		case TOKEN_SLASH:
+        case TOKEN_MODULO:
+        case TOKEN_FLOOR_DIV:
 			return PREC_FACTOR;
+        case TOKEN_POWER:
+            return PREC_POWER;
 		default:
 			return PREC_NONE;
 	}
@@ -251,12 +264,28 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
     case NODE_IDENTIFIER:
         fprintf(fptr, "%p[%.*s]\n", node, node->as.identifier.length, node->as.identifier.name);
         break;
+    case NODE_BOOL:
+        fprintf(fptr, "%p[%s]\n", node, node->as.boolean.value ? "true": "false");
+        break;
     default:
-        if (*(node->as.binary_op.op) == '/') {
-            fprintf(fptr, "%p[%s]\n", node, "÷");
-        } else {
-		    fprintf(fptr, "%p[%.*s]\n", node, node->as.binary_op.length, node->as.binary_op.op);
+        const char* operator;
+        switch (*(node->as.binary_op.op)) {
+            case '/':
+                if (node->as.binary_op.length == 2) {
+                    operator = "‎//";
+                    break;
+                }
+                operator = "÷";
+                break;
+            case '%':
+                operator = "％";
+                break;
+            default:
+                operator = node->as.binary_op.op;
+                break;
         }
+	    fprintf(fptr, "%p[%.*s]\n", node, tokenLen(operator), operator);
+
         genASTMermaidRecursive(fptr, node->as.binary_op.left);
         printMermaidEdge(fptr, node, node->as.binary_op.left);
         genASTMermaidRecursive(fptr, node->as.binary_op.right);
