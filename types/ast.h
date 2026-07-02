@@ -12,7 +12,9 @@ typedef enum {
   NODE_BLOCK,
   NODE_IF,
   NODE_IDENTIFIER,
-  NODE_BOOL 
+  NODE_BOOL,
+  NODE_FUNCTION_DECL,
+  NODE_CALL
 } ASTNodeType;
 
 // Representation of precedence levels
@@ -25,6 +27,7 @@ typedef enum {
   PREC_FACTOR, // * / %
   PREC_UNARY,  // - !
   PREC_POWER,  // ^
+  PREC_CALL,
   PREC_PRIMARY
 } Precedence;
 
@@ -81,6 +84,22 @@ typedef struct {
   bool value; // 
 } BooleanData;
 
+typedef struct {
+  const char* name;           // Zero-copy identifier pointer, name of the function
+  int length;                 // Length of the token/the function name
+  const char** parameters;    // Dynamic or fixed array of parameter names
+  int paramCount;             // Number of parameters exepted
+  struct ASTNode* body;       // Pointer to a NODE_BLOCK node
+} FuncDeclData;
+
+// NODE_CALL payload
+typedef struct {
+  const char* name;             // Target function name (zero-copy)
+  int length;                   // Length of the name
+  struct ASTNode** arguments;   // Dynamic array of ASTNode* sub-expressions
+  int argCount;                 // Number of arguments passed to the target function
+  int argCapacity;              // Used if parsed using a growable vector
+} callData;
 
 // 3. The main polymorphic structure
 struct ASTNode {
@@ -94,6 +113,8 @@ struct ASTNode {
     IfData if_stmt;
     IdentifierData identifier;
     BooleanData boolean;
+    FuncDeclData funcDecl;
+    callData call;
   } as; // 'as' gives clear access: node->as.literal.value
 };
 
@@ -106,6 +127,8 @@ ASTNode* allocateBlockNode(void);
 ASTNode* allocateIfNode(ASTNode* condition, ASTNode* thenBranch, ASTNode* elseBranch);
 ASTNode* allocateIdentifierNode(Token token);
 ASTNode* allocateBoolNode(Token token);
+ASTNode* allocateFunctionDeclNode(const char* name, int length, const char** parameters, int paramCount, ASTNode* body);
+ASTNode* allocateCallNode(const char* name, int length);
 void freeAST(ASTNode *node);
 
 #endif // AST_H

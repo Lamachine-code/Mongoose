@@ -19,7 +19,7 @@ int tokenLen(const char *string) {
   int length = 0;
   int i = 0;
 
-  while (string[i] != ' ' && string[i] != '\0') {
+  while (string[i] != ' ' && string[i] != '\0' && string[i] != ',' && string[i] != ')') {
     i++;
     length++;
   }

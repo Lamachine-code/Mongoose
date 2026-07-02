@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include "../types/ast.h"
 #include "../types/lexer.h"
 #include "../utils/errorUtils.c"
@@ -91,6 +93,26 @@ ASTNode* allocateBoolNode(Token token) {
     return node;
 }
 
+ASTNode* allocateFunctionDeclNode(const char* name, int length, const char** parameters, int paramCount, ASTNode* body) {
+    ASTNode* node = NEW_NODE(NODE_FUNCTION_DECL);
+    node->as.funcDecl.name = name;
+    node->as.funcDecl.length = length;
+    node->as.funcDecl.parameters = parameters; // Transfers ownership of the string pointer table
+    node->as.funcDecl.paramCount = paramCount;
+    node->as.funcDecl.body = body;
+    return node;
+}
+
+ASTNode* allocateCallNode(const char* name, int length) {
+    ASTNode* node = NEW_NODE(NODE_CALL);
+    node->as.call.name = name;
+    node->as.call.length = length;
+    node->as.call.argCount = 0;
+    node->as.call.argCapacity = 4; // Baseline initialization chunk
+    node->as.call.arguments = (ASTNode**)malloc(sizeof(ASTNode*) * node->as.call.argCapacity);
+    return node;
+}
+
 static void freeBlockNode(ASTNode* blockNode) {
     // Step 1: Deeply clean every child expression/statement captured
     for (int i=0; i < blockNode->as.block.count; i++) {
@@ -132,6 +154,25 @@ void freeAST(ASTNode* node) {
             freeBlockNode(node);
             break;
         }
+        case NODE_FUNCTION_DECL:
+            // 1. Free parameter name table (names point to zero-copy lexemes, do not free strings)
+            if (node->as.funcDecl.parameters) {
+                free(node->as.funcDecl.parameters);
+            }
+            // 2. Deeply clean up the body block subtree
+            freeAST(node->as.funcDecl.body);
+            break;
+
+        case NODE_CALL:
+            // 1. Walk through evaluated argument subtrees and free each recursively
+            for (int i = 0; i < node->as.call.argCount; i++) {
+                freeAST(node->as.call.arguments[i]);
+            }
+            // 2. Free the internal argument pointer vector table itself
+            if (node->as.call.arguments) {
+                free(node->as.call.arguments);
+            }
+            break;
         case NODE_BOOL:
             break;
     }
@@ -164,18 +205,13 @@ Precedence getPrecedence(TokenType type) {
 			return PREC_FACTOR;
         case TOKEN_POWER:
             return PREC_POWER;
+        case TOKEN_LPAREN:
+            return PREC_CALL;
 		default:
 			return PREC_NONE;
 	}
 }
 
-// Ex:
-//        *
-//       / \
-//     (-)  2
-//      |
-//      5
-// Result: (* (- 5) 2)
 // Debug helper to print the tree in a structural form
 void printAST(ASTNode *node) {
     if (node == NULL)
@@ -216,81 +252,142 @@ void printAST(ASTNode *node) {
 }
 
 
-// Print edge in Mermaid syntax
-static void printMermaidEdge(FILE* fptr, ASTNode* parent, ASTNode* child) {
-    fprintf(fptr, "%p --> %p\n", parent, child);
+// Helper to print a consistent Mermaid edge
+static void printMermaidEdge(FILE* fptr, void* parent, void* child) {
+    fprintf(fptr, "    %p --> %p\n", parent, child);
 }
 
-// A debugging tool that generates the tree structure as a Mermaid structural graph.
-static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
-    switch (node->type) {
-    
-    case NODE_LITERAL:
-        if (isInteger(node->as.literal.value)) {
-            fprintf(fptr, "%p[%g]\n", node, node->as.literal.value);
-        } else {
-            fprintf(fptr, "%p[%.2f]\n", node, node->as.literal.value);
-        }
-        break;
-    case NODE_UNARY_OP:
-        fprintf(fptr, "%p[%.*s]\n", node, node->as.unary_op.length, node->as.unary_op.op);
-        genASTMermaidRecursive(fptr, node->as.unary_op.operand);    // declare child
-        printMermaidEdge(fptr, node, node->as.unary_op.operand);
-        break;
-    case NODE_VAR_DECL:
-        fprintf(fptr, "%p[let %.*s]\n", node, node->as.var_decl.length, node->as.var_decl.identifier);
-        genASTMermaidRecursive(fptr, node->as.var_decl.initializer);
-        printMermaidEdge(fptr, node, node->as.var_decl.initializer);
-        break;
-	case NODE_IF:
-		fprintf(fptr, "%p[IF]\n", node);
-		fprintf(fptr, "%p[THEN]\n", node->as.if_stmt.thenBranch);
-		printMermaidEdge(fptr, node, node->as.if_stmt.thenBranch);
-		genASTMermaidRecursive(fptr, node->as.if_stmt.thenBranch);
-		genASTMermaidRecursive(fptr, node->as.if_stmt.condition);
-		printMermaidEdge(fptr, node, node->as.if_stmt.condition);
-		if (node->as.if_stmt.elseBranch) {
-			fprintf(fptr, "%p[ELSE]\n", node->as.if_stmt.elseBranch);
-			printMermaidEdge(fptr, node, node->as.if_stmt.elseBranch);
-			genASTMermaidRecursive(fptr, node->as.if_stmt.elseBranch);			
-		}
-        break;
-	case NODE_BLOCK:
-		for (int i=0; i < node->as.block.count; i++) {
-			genASTMermaidRecursive(fptr, node->as.block.statements[i]);
-			printMermaidEdge(fptr, node, node->as.block.statements[i]);
-		}
-        break;
-    case NODE_IDENTIFIER:
-        fprintf(fptr, "%p[%.*s]\n", node, node->as.identifier.length, node->as.identifier.name);
-        break;
-    case NODE_BOOL:
-        fprintf(fptr, "%p[%s]\n", node, node->as.boolean.value ? "true": "false");
-        break;
-    default:
-        const char* operator;
-        switch (*(node->as.binary_op.op)) {
-            case '/':
-                if (node->as.binary_op.length == 2) {
-                    operator = "‎//";
-                    break;
-                }
-                operator = "÷";
-                break;
-            case '%':
-                operator = "％";
-                break;
-            default:
-                operator = node->as.binary_op.op;
-                break;
-        }
-	    fprintf(fptr, "%p[%.*s]\n", node, tokenLen(operator), operator);
+// Helper to print a node declaration with its label
+static void printMermaidNode(FILE* fptr, void* id, const char* fmt, ...) {
+    va_list args;
+    fprintf(fptr, "    %p[", id);       // print node ID and opening bracket
+    va_start(args, fmt);                // initialize variable argument list
+    vfprintf(fptr, fmt, args);          // print the formatted label
+    va_end(args);                       // clean up
+    fprintf(fptr, "]\n");               // close bracket and newline
+}
 
-        genASTMermaidRecursive(fptr, node->as.binary_op.left);
-        printMermaidEdge(fptr, node, node->as.binary_op.left);
-        genASTMermaidRecursive(fptr, node->as.binary_op.right);
-        printMermaidEdge(fptr, node, node->as.binary_op.right);
-        break;
+// A cleaned up, safe, and highly readable recursive AST printer
+static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
+    if (!node) return;
+
+    switch (node->type) {
+        case NODE_LITERAL: {
+            if (isInteger(node->as.literal.value)) {
+                printMermaidNode(fptr, node, "%g", node->as.literal.value);
+            } else {
+                printMermaidNode(fptr, node, "%.2f", node->as.literal.value);
+            }
+            break;
+        }
+        case NODE_BOOL: {
+            printMermaidNode(fptr, node, "%s", node->as.boolean.value ? "true" : "false");
+            break;
+        }
+        case NODE_IDENTIFIER: {
+            printMermaidNode(fptr, node, "%.*s", node->as.identifier.length, node->as.identifier.name);
+            break;
+        }
+        case NODE_UNARY_OP: {
+            printMermaidNode(fptr, node, "%.*s", node->as.unary_op.length, node->as.unary_op.op);
+            
+            genASTMermaidRecursive(fptr, node->as.unary_op.operand);
+            printMermaidEdge(fptr, node, node->as.unary_op.operand);
+            break;
+        }
+        case NODE_VAR_DECL: {
+            printMermaidNode(fptr, node, "let %.*s", node->as.var_decl.length, node->as.var_decl.identifier);
+            
+            genASTMermaidRecursive(fptr, node->as.var_decl.initializer);
+            printMermaidEdge(fptr, node, node->as.var_decl.initializer);
+            break;
+        }
+        case NODE_IF: {
+            printMermaidNode(fptr, node, "IF");
+
+            // Define and link Condition
+            genASTMermaidRecursive(fptr, node->as.if_stmt.condition);
+            printMermaidEdge(fptr, node, node->as.if_stmt.condition);
+
+            // Define and link Then branch
+            genASTMermaidRecursive(fptr, node->as.if_stmt.thenBranch);
+            printMermaidEdge(fptr, node, node->as.if_stmt.thenBranch);
+
+            // Define and link Else branch (if it exists)
+            if (node->as.if_stmt.elseBranch) {
+                genASTMermaidRecursive(fptr, node->as.if_stmt.elseBranch);
+                printMermaidEdge(fptr, node, node->as.if_stmt.elseBranch);
+            }
+            break;
+        }
+        case NODE_BLOCK: {
+            printMermaidNode(fptr, node, "BLOCK");
+            for (int i = 0; i < node->as.block.count; i++) {
+                genASTMermaidRecursive(fptr, node->as.block.statements[i]);
+                printMermaidEdge(fptr, node, node->as.block.statements[i]);
+            }
+            break;
+        }
+        case NODE_FUNCTION_DECL: {
+            printMermaidNode(fptr, node, "FUNC_DECL: %.*s", node->as.funcDecl.length, node->as.funcDecl.name);
+            
+            // Generate Parameters as a sub-list or individual nodes linked to the function decl
+            for (int i = 0; i < node->as.funcDecl.paramCount; i++) {
+                // We use a unique compound pointer identity for the parameter text shape
+                void* paramId = (char*)node + i + 1; 
+                printMermaidNode(fptr, paramId, "Param: %.*s", tokenLen(node->as.funcDecl.parameters[i]), node->as.funcDecl.parameters[i]);
+                printMermaidEdge(fptr, node, paramId);
+            }
+
+            // Link the body
+            if (node->as.funcDecl.body) {
+                genASTMermaidRecursive(fptr, node->as.funcDecl.body);
+                printMermaidEdge(fptr, node, node->as.funcDecl.body);
+            }
+            break;
+        }
+        case NODE_CALL: {
+            // Print the function call node itself
+            printMermaidNode(fptr, node, "CALL: %.*s", node->as.call.length, node->as.call.name);
+
+            // Print each argument as a child node
+            for (int i = 0; i < node->as.call.argCount; i++) {
+                ASTNode* arg = node->as.call.arguments[i];
+                if (arg) {
+                    genASTMermaidRecursive(fptr, arg);
+                    printMermaidEdge(fptr, node, arg);
+                }
+            }
+            break;
+        }
+        case NODE_BINARY_OP: { // Explicitly named case instead of default
+            const char* op_str = node->as.binary_op.op;
+            int op_len = node->as.binary_op.length;
+
+            if (op_len == 2 && op_str[0] == '/' && op_str[1] == '/') {
+                printMermaidNode(fptr, node, "‎//");
+            }
+            else if (op_len == 1 && op_str[0] == '/') {
+                printMermaidNode(fptr, node, "÷");
+            } else if (op_len == 1 && op_str[0] == '%') {
+                printMermaidNode(fptr, node, "％");
+            } else if (op_str[0] == '%') {
+                printMermaidNode(fptr, node, "%%"); // Mermaid requires %% to escape % signs safely
+            } else {
+                printMermaidNode(fptr, node, "%.*s", op_len, op_str);
+            }
+
+            genASTMermaidRecursive(fptr, node->as.binary_op.left);
+            printMermaidEdge(fptr, node, node->as.binary_op.left);
+            
+            genASTMermaidRecursive(fptr, node->as.binary_op.right);
+            printMermaidEdge(fptr, node, node->as.binary_op.right);
+            break;
+        }
+        default:
+            // Safe fallback so your compiler warning levels or missing features don't crash it
+            printMermaidNode(fptr, node, "UNKNOWN_NODE_TYPE");
+            break;
     }
 }
 

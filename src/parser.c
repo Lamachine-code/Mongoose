@@ -2,8 +2,6 @@
 #include "../services/astService.c"
 #include <stdio.h>
 
-//      ↓
-// Ex: let total = (5 + 3) * 2
 // High-level discriminator function
 // If it encounters the keyword “let” (token TOKEN_LET), it calls the parseVarDecl() function
 // If it does not find a statement keyword, it treats the line as a simple expression.
@@ -16,6 +14,8 @@ ASTNode* parseStatement(Parser* parser) {
         stmt = parseVarDecl(parser);
     } else if (checkParser(parser, TOKEN_IF)) {
         stmt = parseIf(parser);
+    } else if (checkParser(parser, TOKEN_FUNCTION)) {
+        stmt = parseFunctionDecl(parser);
     } else {
         stmt = parseExpression(parser, PREC_NONE);
     }
@@ -29,22 +29,24 @@ ASTNode* parseStatement(Parser* parser) {
 
 
 ASTNode* parseExpression(Parser* parser, Precedence precedence) {
-
-    // Token lhs_token = consumeParser(parser, TOKEN_NUMBER, "We were expecting a number.");
     Token lhs_token = advanceParser(parser);
     ASTNode* lhs = parsePrefix(parser, lhs_token);
 
-    while (true)
-    {
+    while (true) {
         Token op = peekParser(parser);
-        int op_precedence = getPrecedence(op.type);
-        if ( op.type == TOKEN_EOF || op_precedence <= precedence ) {
+        
+        // 1. Determine priority of current lookahead token
+        Precedence op_precedence = getPrecedence(op.type);// op_precedence > precedence
+
+        // 2. If the next operator has lower or equal precedence, we stop chaining LHS
+        if (op.type == TOKEN_EOF || op_precedence <= precedence) { 
             break;
         }
 
+        // 3. Now we safely consume the operator token 
         advanceParser(parser);
-        ASTNode* rhs = parseExpression(parser, op_precedence);
-        lhs = allocateBinaryOpNode(op.start, op.length, lhs, rhs);
+
+        lhs = parseInfix(parser, lhs, op, op_precedence);
     }
 
     return lhs;

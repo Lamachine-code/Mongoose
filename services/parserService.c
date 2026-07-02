@@ -6,6 +6,7 @@
 #include "../types/lexer.h"
 
 void *ensureAlloc(void *ptr, const char *errorMsg);
+ASTNode* parseInfixCall(Parser* parser, ASTNode* left);
 
 // Initialize the parser with the array of tokens provided by the Lexer
 void initParser(Parser* parser, Token* tokens, int tokenCount) {
@@ -76,7 +77,7 @@ Token consumeParser(Parser* parser, TokenType type, const char* message) {
 // zero: parseExpression(parser, 0). Once this sub-expression is 
 // collected, it immediately requires a closing parenthesis ) 
 // via our secure plumbing function consumeParser
-ASTNode* parsePrefix(Parser* parser, Token token) {
+ASTNode* parsePrefix(Parser* parser, Token token) {// token = add
 
     switch (token.type) {
 
@@ -105,6 +106,7 @@ ASTNode* parsePrefix(Parser* parser, Token token) {
             return allocateBoolNode(token);
 
         default:
+            printf("%.*s", token.length, token.start);
             fprintf(stderr, "Parsing Error (Line %d, Col %d): Unexpected syntax initialization option parsed.\n", token.line, token.col);
             exit(EXIT_FAILURE);
             return NULL;
@@ -146,6 +148,7 @@ ASTNode* parseBlock(Parser* parser) {
     
     // The sequence loop continues parsing statements sequentially until it bumps
     // into either an 'else' boundary or a terminating 'stop' token.
+    // The loop does not consume the STOP and ELSE tokens
     while (!checkParser(parser, TOKEN_STOP) && !checkParser(parser, TOKEN_ELSE)) {
         // Safety lock check: stop infinite tracking loops if file EOF is breached
         if (checkParser(parser, TOKEN_EOF)) {
@@ -175,8 +178,7 @@ ASTNode* parseBlock(Parser* parser) {
     
     if (blockNode->as.block.count > 0) {
         ASTNode** temp = realloc(blockNode->as.block.statements, blockNode->as.block.count * sizeof(ASTNode*));
-        ensureAlloc(temp, "Reallocation block statements");
-        blockNode->as.block.statements = temp;
+        blockNode->as.block.statements = ensureAlloc(temp, "Reallocation block statements");
         blockNode->as.block.capacity = blockNode->as.block.count;
     } else {
         // If the block is completely empty, free the unused buffer array 
@@ -221,4 +223,116 @@ ASTNode* parseIf(Parser* parser) {
     
     // Step 7: Factory structural parameters and forward node tracking upward
     return allocateIfNode(condition, thenBranch, elseBranch);
+}
+
+ASTNode* parseInfix(Parser* parser, ASTNode* lhs, Token operator, int op_precedence) {
+        // 4. Dispatch based on the infix operator type
+        switch (operator.type) {
+            case TOKEN_LPAREN: {
+                // Because TOKEN_LPAREN was advanced over, parseInfixCall immediately parses arguments!
+                return parseInfixCall(parser, lhs);
+            } 
+            default: {
+                // Standard binary tracking arithmetic (+, -, *, /)
+                ASTNode* rhs = parseExpression(parser, op_precedence);
+                return allocateBinaryOpNode(operator.start, operator.length, lhs, rhs);
+            }            
+        }
+
+}
+
+ASTNode* parseFunctionDecl(Parser* parser) {
+    consumeParser(parser, TOKEN_FUNCTION, "Expected 'function' keyword.");
+    
+    // Zero-copy tracking: extract target name directly from identifier token lifetime
+    Token token = consumeParser(parser, TOKEN_IDENTIFIER, "Expected function name.");
+    const char* funcName = token.start;
+
+    consumeParser(parser, TOKEN_LPAREN, "Expected '(' after function name.");
+
+    // Parse parameters
+    int paramCount = 0;
+    int paramCapacity = 4;
+    //                                               ⬇
+    // Ex: function fillEvens(arr, index, max, value)
+    const char** parameters = (const char**)malloc(sizeof(const char*) * paramCapacity);
+
+    if (!checkParser(parser, TOKEN_RPAREN)) {   // check if the function exepects parameter(s). Ex: « function print() » vs « function add(a, b) »
+        do {
+            // Consume one param
+            // Since we've already verified that the function expects at least one parameter
+            Token paramToken = consumeParser(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
+            
+            // Dynamic parameter array resize loop
+            if (paramCount >= paramCapacity) {
+                paramCapacity *= 2;
+                parameters = (const char**)realloc(parameters, sizeof(const char*) * paramCapacity);
+            }
+            // Add the parameter to the list of params of the node
+            parameters[paramCount++] = paramToken.start; // zero-copy pointer link
+
+            if (checkParser(parser, TOKEN_COMMA)) {
+                advanceParser(parser); // Consume comma
+            } else {
+                break;
+            }
+        } while (true);
+    }
+    
+    consumeParser(parser, TOKEN_RPAREN, "Expected ')' after parameter list.");
+    
+    // Parse the function body block (scoped between parameter list and closing 'stop')
+    // “parseBlock” does not consume the stop token of the block in which it is called
+    ASTNode* body = parseBlock(parser); // Continues reading statements until TOKEN_STOP
+    
+    consumeParser(parser, TOKEN_STOP, "Expected 'stop' to seal function structure.");
+
+    return allocateFunctionDeclNode(funcName, token.length, parameters, paramCount, body);
+}
+
+ASTNode* parseInfixCall(Parser* parser, ASTNode* left) {
+    // Safety check: The left-hand expression node must be an identifier to be callable
+    if (left->type != NODE_IDENTIFIER) { 
+        // Handle gracefully: error report or fallback
+        fprintf(stderr, "Syntax Error: Left-hand side of call is not a callable identifier.\n");
+        return left;
+    }
+    
+    const char* funcName = left->as.identifier.name;
+    int length = left->as.identifier.length;
+    
+    // Recycle the left node container safely
+    free(left);
+    
+    // Allocate call node container 
+    ASTNode* callNode = allocateCallNode(funcName, length);
+
+    // If we are here, '(', which triggered this infix rule, has ALREADY been advanced over!
+    // We check if the function expects argument(s). Ex: "print()" vs "add(a, b)"
+    if (!checkParser(parser, TOKEN_RPAREN)) {
+        do {
+            // Parse argument expression at the lowest precedence level (PREC_NONE / 0)
+            ASTNode* argument = parseExpression(parser, PREC_NONE); 
+            
+            // Dynamic capacity growth
+            if (callNode->as.call.argCount >= callNode->as.call.argCapacity) {
+                callNode->as.call.argCapacity *= 2;
+                callNode->as.call.arguments = (ASTNode**)realloc(
+                    callNode->as.call.arguments, 
+                    sizeof(ASTNode*) * callNode->as.call.argCapacity
+                );
+            }
+            
+            callNode->as.call.arguments[callNode->as.call.argCount++] = argument;
+
+            if (checkParser(parser, TOKEN_COMMA)) {
+                advanceParser(parser); // Consume ',' and move to next parameter token
+            } else {
+                break;
+            }
+        } while (true);
+    }
+
+    consumeParser(parser, TOKEN_RPAREN, "Expected ')' to close function argument scope.");
+    return callNode;
 }
