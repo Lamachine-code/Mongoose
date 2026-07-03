@@ -26,8 +26,6 @@ ASTNode* parseStatement(Parser* parser) {
     return stmt;
 }
 
-
-
 ASTNode* parseExpression(Parser* parser, Precedence precedence) {
     Token lhs_token = advanceParser(parser);
     ASTNode* lhs = parsePrefix(parser, lhs_token);
@@ -36,10 +34,10 @@ ASTNode* parseExpression(Parser* parser, Precedence precedence) {
         Token op = peekParser(parser);
         
         // 1. Determine priority of current lookahead token
-        Precedence op_precedence = getPrecedence(op.type);// op_precedence > precedence
+        Precedence op_precedence = getPrecedence(op.type);
 
         // 2. If the next operator has lower or equal precedence, we stop chaining LHS
-        if (op.type == TOKEN_EOF || op_precedence <= precedence) { 
+        if (op.type == TOKEN_EOF || op_precedence <= precedence) {
             break;
         }
 

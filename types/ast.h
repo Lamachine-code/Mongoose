@@ -14,7 +14,8 @@ typedef enum {
   NODE_IDENTIFIER,
   NODE_BOOL,
   NODE_FUNCTION_DECL,
-  NODE_CALL
+  NODE_CALL,
+  NODE_INDEX
 } ASTNodeType;
 
 // Representation of precedence levels
@@ -23,11 +24,11 @@ typedef enum {
   PREC_LOGICAL_OP,  // 
   PREC_EQUALITY,
   PREC_COMP,
-  PREC_TERM,   // + -
-  PREC_FACTOR, // * / %
-  PREC_UNARY,  // - !
-  PREC_POWER,  // ^
-  PREC_CALL,
+  PREC_TERM,    // + -
+  PREC_FACTOR,  // * / %
+  PREC_UNARY,   // - !
+  PREC_POWER,   // ^
+  PREC_POSTFIX, // () []
   PREC_PRIMARY
 } Precedence;
 
@@ -81,7 +82,7 @@ typedef struct {
 } IfData;
 
 typedef struct {
-  bool value; // 
+  bool value;
 } BooleanData;
 
 typedef struct {
@@ -101,6 +102,12 @@ typedef struct {
   int argCapacity;              // Used if parsed using a growable vector
 } callData;
 
+// Array indexing
+typedef struct {
+  ASTNode* target;   // e.g. myArray
+  ASTNode* index;    // e.g. 0, size, or an expression (e.g. myArray[3 + index])
+} IndexData;
+
 // 3. The main polymorphic structure
 struct ASTNode {
   ASTNodeType type;  // The discriminant (the tag)
@@ -115,6 +122,7 @@ struct ASTNode {
     BooleanData boolean;
     FuncDeclData funcDecl;
     callData call;
+    IndexData index_node;
   } as; // 'as' gives clear access: node->as.literal.value
 };
 
@@ -129,6 +137,7 @@ ASTNode* allocateIdentifierNode(Token token);
 ASTNode* allocateBoolNode(Token token);
 ASTNode* allocateFunctionDeclNode(const char* name, int length, const char** parameters, int paramCount, ASTNode* body);
 ASTNode* allocateCallNode(const char* name, int length);
+ASTNode* allocateIndexingNode(ASTNode* target, ASTNode* index);
 void freeAST(ASTNode *node);
 
 #endif // AST_H

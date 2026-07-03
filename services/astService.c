@@ -113,6 +113,14 @@ ASTNode* allocateCallNode(const char* name, int length) {
     return node;
 }
 
+ASTNode* allocateIndexingNode(ASTNode* target, ASTNode* index) {
+    ASTNode* node = NEW_NODE(NODE_INDEX);
+    node->as.index_node.target = target;
+    node->as.index_node.index = index;
+
+    return node;
+}
+
 static void freeBlockNode(ASTNode* blockNode) {
     // Step 1: Deeply clean every child expression/statement captured
     for (int i=0; i < blockNode->as.block.count; i++) {
@@ -173,6 +181,9 @@ void freeAST(ASTNode* node) {
                 free(node->as.call.arguments);
             }
             break;
+        case NODE_INDEX:
+            freeAST(node->as.index_node.target);
+            freeAST(node->as.index_node.index);
         case NODE_BOOL:
             break;
     }
@@ -206,7 +217,8 @@ Precedence getPrecedence(TokenType type) {
         case TOKEN_POWER:
             return PREC_POWER;
         case TOKEN_LPAREN:
-            return PREC_CALL;
+        case TOKEN_LBRACKET:
+            return PREC_POSTFIX;
 		default:
 			return PREC_NONE;
 	}
@@ -382,6 +394,18 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
             
             genASTMermaidRecursive(fptr, node->as.binary_op.right);
             printMermaidEdge(fptr, node, node->as.binary_op.right);
+            break;
+        }
+        case NODE_INDEX: {
+            printMermaidNode(fptr, node, "INDEX");
+
+            // Print target (the array being indexed)
+            genASTMermaidRecursive(fptr, node->as.index_node.target);
+            printMermaidEdge(fptr, node, node->as.index_node.target);
+
+            // Print index expression
+            genASTMermaidRecursive(fptr, node->as.index_node.index);
+            printMermaidEdge(fptr, node, node->as.index_node.index);
             break;
         }
         default:

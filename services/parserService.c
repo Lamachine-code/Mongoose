@@ -6,7 +6,6 @@
 #include "../types/lexer.h"
 
 void *ensureAlloc(void *ptr, const char *errorMsg);
-ASTNode* parseInfixCall(Parser* parser, ASTNode* left);
 
 // Initialize the parser with the array of tokens provided by the Lexer
 void initParser(Parser* parser, Token* tokens, int tokenCount) {
@@ -29,10 +28,6 @@ bool checkParser(Parser* parser, TokenType type) {
     if (parser->current >= parser->tokenCount) return false;
     return peekParser(parser).type == type;
 }
-
-// =================================================================
-// TODO: Complete the two functions below
-// =================================================================
 
 // Advance the cursor by one token and return the token that was passed.
 // Be careful not to overflow the array (can't advance past tokenCount - 1).
@@ -66,8 +61,6 @@ Token consumeParser(Parser* parser, TokenType type, const char* message) {
     Token currentToken = peekParser(parser);
     fprintf(stderr, "Parsing Error (Line %d, Col %d): %s\n", currentToken.line, currentToken.col, message);
     exit(EXIT_FAILURE);
-
-    // TODO: Implement the logic here
 }
 
 // Updated Prefix Handling supporting nested grouping constraints
@@ -161,7 +154,7 @@ ASTNode* parseBlock(Parser* parser) {
         ASTNode* stmt = parseStatement(parser);
         if (stmt != NULL) {
             
-            /* TODO: Handle dynamic resizing of blockNode->as.block.statements */
+            /* Handle dynamic resizing of blockNode->as.block.statements */
             /* Track calculations: if (count == capacity) { double and realloc } */
             if (blockNode->as.block.count == blockNode->as.block.capacity) {
                 // if statements is complete
@@ -225,13 +218,24 @@ ASTNode* parseIf(Parser* parser) {
     return allocateIfNode(condition, thenBranch, elseBranch);
 }
 
+ASTNode* parseInfixIndexing(Parser* parser, ASTNode* target) {
+    ASTNode* indexNode = parseExpression(parser, PREC_NONE);
+    consumeParser(parser, TOKEN_RBRACKET, "Expected ')' to close indexing.");
+
+    return allocateIndexingNode(target, indexNode);
+}
+
 ASTNode* parseInfix(Parser* parser, ASTNode* lhs, Token operator, int op_precedence) {
         // 4. Dispatch based on the infix operator type
         switch (operator.type) {
             case TOKEN_LPAREN: {
+                // At this point, we can already be sure that “operator.type” is of type TOKEN_LPAREN, so there's no need to check in parseInfixCall.
                 // Because TOKEN_LPAREN was advanced over, parseInfixCall immediately parses arguments!
                 return parseInfixCall(parser, lhs);
-            } 
+            }
+            case TOKEN_LBRACKET:
+                // At this point, we can already be sure that “operator.type” is of type TOKEN_LBRACKET, so there's no need to check in parseInfixIndexing.
+                return parseInfixIndexing(parser, lhs);
             default: {
                 // Standard binary tracking arithmetic (+, -, *, /)
                 ASTNode* rhs = parseExpression(parser, op_precedence);
