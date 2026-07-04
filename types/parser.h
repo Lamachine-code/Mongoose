@@ -34,4 +34,5 @@ ASTNode* parseIf(Parser* parser);
 ASTNode* parseInfix(Parser* parser, ASTNode* lhs, Token operator, int op_precedence);
 ASTNode* parseInfixIndexing(Parser* parser, ASTNode* target);
 ASTNode* parseReturnStmt(Parser* parser);
+ASTNode* parseAssignment(Parser* parser, ASTNode* target);
 ASTNode* parseExpression(Parser* parser, Precedence precedence);

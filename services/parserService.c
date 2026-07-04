@@ -220,9 +220,14 @@ ASTNode* parseIf(Parser* parser) {
 
 ASTNode* parseInfixIndexing(Parser* parser, ASTNode* target) {
     ASTNode* indexNode = parseExpression(parser, PREC_NONE);
-    consumeParser(parser, TOKEN_RBRACKET, "Expected ')' to close indexing.");
+    consumeParser(parser, TOKEN_RBRACKET, "Expected ']' to close indexing.");
 
     return allocateIndexingNode(target, indexNode);
+}
+
+ASTNode* parseAssignment(Parser* parser, ASTNode* target) {
+    ASTNode* value = parseExpression(parser, PREC_NONE);
+    return allocateAssignNode(target, value);
 }
 
 ASTNode* parseInfix(Parser* parser, ASTNode* lhs, Token operator, int op_precedence) {
@@ -236,6 +241,8 @@ ASTNode* parseInfix(Parser* parser, ASTNode* lhs, Token operator, int op_precede
             case TOKEN_LBRACKET:
                 // At this point, we can already be sure that “operator.type” is of type TOKEN_LBRACKET, so there's no need to check in parseInfixIndexing.
                 return parseInfixIndexing(parser, lhs);
+            case TOKEN_ASSIGN:
+                return parseAssignment(parser, lhs);
             default: {
                 // Standard binary tracking arithmetic (+, -, *, /)
                 ASTNode* rhs = parseExpression(parser, op_precedence);

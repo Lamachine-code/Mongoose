@@ -128,6 +128,14 @@ ASTNode* allocateReturnNode(ASTNode* value) {
     return node;
 }
 
+ASTNode* allocateAssignNode(ASTNode* target, ASTNode* value) {
+    ASTNode* node = NEW_NODE(NODE_ASSIGN);
+    node->as.assign.target = target;
+    node->as.assign.value = value;
+
+    return node;
+}
+
 static void freeBlockNode(ASTNode* blockNode) {
     // Step 1: Deeply clean every child expression/statement captured
     for (int i=0; i < blockNode->as.block.count; i++) {
@@ -195,6 +203,10 @@ void freeAST(ASTNode* node) {
         case NODE_RETURN:
             freeAST(node->as.return_node.value);
             break;
+        case NODE_ASSIGN:
+            freeAST(node->as.assign.target);
+            freeAST(node->as.assign.value);
+            break;
         case NODE_BOOL:
             break;
     }
@@ -206,6 +218,8 @@ void freeAST(ASTNode* node) {
 // Small utility function to assign precedence to our tokens
 Precedence getPrecedence(TokenType type) {
 	switch (type) {
+        case TOKEN_ASSIGN:
+            return PREC_ASSIGN;
         case TOKEN_AND:
         case TOKEN_OR:
             return PREC_LOGICAL_OP;
@@ -423,6 +437,14 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
             printMermaidNode(fptr, node, "RETURN");
             genASTMermaidRecursive(fptr, node->as.return_node.value);
             printMermaidEdge(fptr, node, node->as.return_node.value);
+            break;
+        }
+        case NODE_ASSIGN: {
+            printMermaidNode(fptr, node, "=");
+            genASTMermaidRecursive(fptr, node->as.assign.target);
+            printMermaidEdge(fptr, node, node->as.assign.target);
+            genASTMermaidRecursive(fptr, node->as.assign.value);
+            printMermaidEdge(fptr, node, node->as.assign.value);
             break;
         }
         default:

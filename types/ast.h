@@ -16,20 +16,26 @@ typedef enum {
   NODE_FUNCTION_DECL,
   NODE_CALL,
   NODE_INDEX,
-  NODE_RETURN
+  NODE_RETURN,
+  NODE_ASSIGN
 } ASTNodeType;
 
 // Representation of precedence levels
 typedef enum {
   PREC_NONE,
-  PREC_LOGICAL_OP,  // 
-  PREC_EQUALITY,
-  PREC_COMP,
-  PREC_TERM,    // + -
-  PREC_FACTOR,  // * / %
-  PREC_UNARY,   // - !
-  PREC_POWER,   // ^
-  PREC_POSTFIX, // () []
+  PREC_ASSIGN,      // This operator has the lowest precedence because it must be applied last.
+                    // First, we evaluate the expression to be assigned, and then we assign it to the variable.
+                    // Assignment has very low precedence (lower than +, *, comparisons, etc.).
+                    // This ensures the right‑hand side is fully parsed before being attached.
+  
+  PREC_LOGICAL_OP,  // or and
+  PREC_EQUALITY,    // == !=
+  PREC_COMP,        // < > <= >=
+  PREC_TERM,        // + -
+  PREC_FACTOR,      // * / %
+  PREC_UNARY,       // - !
+  PREC_POWER,       // ^
+  PREC_POSTFIX,     // () []
   PREC_PRIMARY
 } Precedence;
 
@@ -114,6 +120,13 @@ typedef struct {
   ASTNode* value; // expression being returned
 } ReturnData;
 
+// Assignement Stmt
+typedef struct {
+  ASTNode* target;
+  ASTNode* value;
+} AssignData;
+
+
 // 3. The main polymorphic structure
 struct ASTNode {
   ASTNodeType type;  // The discriminant (the tag)
@@ -130,6 +143,7 @@ struct ASTNode {
     callData call;
     IndexData index_node;
     ReturnData return_node;
+    AssignData assign;
   } as; // 'as' gives clear access: node->as.literal.value
 };
 
@@ -146,6 +160,7 @@ ASTNode* allocateFunctionDeclNode(const char* name, int length, const char** par
 ASTNode* allocateCallNode(const char* name, int length);
 ASTNode* allocateIndexingNode(ASTNode* target, ASTNode* index);
 ASTNode* allocateReturnNode(ASTNode* value);
+ASTNode* allocateAssignNode(ASTNode* target, ASTNode* value);
 void freeAST(ASTNode *node);
 
 #endif // AST_H
