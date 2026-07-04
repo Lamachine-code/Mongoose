@@ -15,7 +15,8 @@ typedef enum {
   NODE_BOOL,
   NODE_FUNCTION_DECL,
   NODE_CALL,
-  NODE_INDEX
+  NODE_INDEX,
+  NODE_RETURN
 } ASTNodeType;
 
 // Representation of precedence levels
@@ -108,6 +109,11 @@ typedef struct {
   ASTNode* index;    // e.g. 0, size, or an expression (e.g. myArray[3 + index])
 } IndexData;
 
+// Return Stmt
+typedef struct {
+  ASTNode* value; // expression being returned
+} ReturnData;
+
 // 3. The main polymorphic structure
 struct ASTNode {
   ASTNodeType type;  // The discriminant (the tag)
@@ -123,6 +129,7 @@ struct ASTNode {
     FuncDeclData funcDecl;
     callData call;
     IndexData index_node;
+    ReturnData return_node;
   } as; // 'as' gives clear access: node->as.literal.value
 };
 
@@ -138,6 +145,7 @@ ASTNode* allocateBoolNode(Token token);
 ASTNode* allocateFunctionDeclNode(const char* name, int length, const char** parameters, int paramCount, ASTNode* body);
 ASTNode* allocateCallNode(const char* name, int length);
 ASTNode* allocateIndexingNode(ASTNode* target, ASTNode* index);
+ASTNode* allocateReturnNode(ASTNode* value);
 void freeAST(ASTNode *node);
 
 #endif // AST_H

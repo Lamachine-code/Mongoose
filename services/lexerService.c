@@ -165,6 +165,7 @@ static Token identifierOrKeyword(Lexer* lexer) {
         case 's': type = checkKeyword(lexer, 0, 4, "stop", TOKEN_STOP); break;
         case 'o': type = checkKeyword(lexer, 0, 2, "or", TOKEN_OR); break;
         case 'n': type = checkKeyword(lexer, 0, 3, "not", TOKEN_NOT); break;
+        case 'r': type = checkKeyword(lexer, 0, 6, "return", TOKEN_RETURN); break;
     }    
     return makeToken(lexer, type);
 }

@@ -121,6 +121,13 @@ ASTNode* allocateIndexingNode(ASTNode* target, ASTNode* index) {
     return node;
 }
 
+ASTNode* allocateReturnNode(ASTNode* value) {
+    ASTNode* node = NEW_NODE(NODE_RETURN);
+    node->as.return_node.value = value;
+
+    return node;
+}
+
 static void freeBlockNode(ASTNode* blockNode) {
     // Step 1: Deeply clean every child expression/statement captured
     for (int i=0; i < blockNode->as.block.count; i++) {
@@ -184,6 +191,10 @@ void freeAST(ASTNode* node) {
         case NODE_INDEX:
             freeAST(node->as.index_node.target);
             freeAST(node->as.index_node.index);
+            break;
+        case NODE_RETURN:
+            freeAST(node->as.return_node.value);
+            break;
         case NODE_BOOL:
             break;
     }
@@ -406,6 +417,12 @@ static void genASTMermaidRecursive(FILE* fptr, ASTNode* node) {
             // Print index expression
             genASTMermaidRecursive(fptr, node->as.index_node.index);
             printMermaidEdge(fptr, node, node->as.index_node.index);
+            break;
+        }
+        case NODE_RETURN: {
+            printMermaidNode(fptr, node, "RETURN");
+            genASTMermaidRecursive(fptr, node->as.return_node.value);
+            printMermaidEdge(fptr, node, node->as.return_node.value);
             break;
         }
         default:

@@ -26,7 +26,10 @@ typedef enum {
     TOKEN_ASSIGN, TOKEN_EQUAL, TOKEN_NOTEQUAL,          // = == !=
     TOKEN_LT, TOKEN_GT, TOKEN_LTEQ, TOKEN_GTEQ,         // < > <= >=
     TOKEN_LPAREN, TOKEN_RPAREN, TOKEN_COMMA,            // ( ) ,
-    TOKEN_LBRACKET, TOKEN_RBRACKET                      // [ ]
+    TOKEN_LBRACKET, TOKEN_RBRACKET,                      // [ ]
+
+    //
+    TOKEN_RETURN
 } TokenType;
 
 typedef struct {

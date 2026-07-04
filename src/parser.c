@@ -16,6 +16,8 @@ ASTNode* parseStatement(Parser* parser) {
         stmt = parseIf(parser);
     } else if (checkParser(parser, TOKEN_FUNCTION)) {
         stmt = parseFunctionDecl(parser);
+    }else if (checkParser(parser, TOKEN_RETURN)) {
+        stmt = parseReturnStmt(parser);
     } else {
         stmt = parseExpression(parser, PREC_NONE);
     }

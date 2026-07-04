@@ -340,3 +340,11 @@ ASTNode* parseInfixCall(Parser* parser, ASTNode* left) {
     consumeParser(parser, TOKEN_RPAREN, "Expected ')' to close function argument scope.");
     return callNode;
 }
+
+ASTNode* parseReturnStmt(Parser* parser) {
+    // Consume "return" token
+    consumeParser(parser, TOKEN_RETURN, "Expected 'return' here.");
+
+    ASTNode* value = parseExpression(parser, PREC_NONE);
+    return allocateReturnNode(value);
+}
