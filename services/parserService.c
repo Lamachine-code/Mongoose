@@ -279,12 +279,15 @@ ASTNode* parseFunctionDecl(Parser* parser) {
                 paramCapacity *= 2;
                 parameters = (const char**)realloc(parameters, sizeof(const char*) * paramCapacity);
             }
+
             // Add the parameter to the list of params of the node
             parameters[paramCount++] = paramToken.start; // zero-copy pointer link
 
             if (checkParser(parser, TOKEN_COMMA)) {
                 advanceParser(parser); // Consume comma
             } else {
+                // Shrink-to-fit
+                parameters = (const char**)realloc(parameters, sizeof(const char*) * paramCount);
                 break;
             }
         } while (true);

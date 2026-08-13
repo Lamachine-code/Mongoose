@@ -36,3 +36,4 @@ ASTNode* parseInfixIndexing(Parser* parser, ASTNode* target);
 ASTNode* parseReturnStmt(Parser* parser);
 ASTNode* parseAssignment(Parser* parser, ASTNode* target);
 ASTNode* parseExpression(Parser* parser, Precedence precedence);
+ASTNode* parseFunctionDecl(Parser* parser);

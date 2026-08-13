@@ -6,8 +6,11 @@ let admitted = true
 
 // 2. Definition of a recursive function
 // This function fills an array with the first even numbers
+function isFinished(index, max)
+    return index == max
+stop
 function fillEvens(arr, index, max, value)
-    if index == max then
+    if isFinished(index, max) then
         let finished = true
     else
         arr[index] = value
