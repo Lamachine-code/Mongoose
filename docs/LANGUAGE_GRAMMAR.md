@@ -13,10 +13,12 @@ claim that every production is already accepted by the parser.
 - Newlines separate statements.
 - Keywords are `let`, `function`, `if`, `then`, `else`, `stop`,
   `return`, `and`, `or` and `not`.
-- Comments must be made consistent with the examples. The current sample uses
-  `//`, but the current lexer uses `#`; implementation will preserve both
-  comment spellings while keeping `//` unavailable as floor division in
-  comment position.
+- The current lexer recognizes `#` line comments.
+- The current lexer recognizes `//` as the floor-division operator.
+- `golden-master.snake` currently uses `//` for comments, which conflicts
+  with the existing floor-division token. This is an unresolved language
+  design inconsistency; the frontend must not silently reinterpret `//`
+  without a documented lexical rule.
 
 ## EBNF
 
