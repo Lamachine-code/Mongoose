@@ -16,6 +16,19 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(mongoose PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
+add_library(mongoose_vm
+  src/value.c
+  src/chunk.c
+  src/vm.c
+)
+target_include_directories(mongoose_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(mongoose_vm PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+if(UNIX)
+  target_link_libraries(mongoose_vm PUBLIC m)
+endif()
+
 enable_testing()
 add_test(NAME golden_master_frontend
   COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/golden-master.snake)
@@ -38,3 +51,10 @@ add_test(NAME lexical_shadowing
 add_test(NAME assignment_to_function_is_rejected
   COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/assign_function_is_rejected.snake)
 set_tests_properties(assignment_to_function_is_rejected PROPERTIES WILL_FAIL TRUE)
+
+add_executable(mongoose_vm_smoke tests/vm_smoke.c)
+target_link_libraries(mongoose_vm_smoke PRIVATE mongoose_vm)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(mongoose_vm_smoke PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME vm_executes_arithmetic_bytecode COMMAND mongoose_vm_smoke)
