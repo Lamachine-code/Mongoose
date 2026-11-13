@@ -100,6 +100,8 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
             case OP_EQUAL:
             case OP_GREATER:
             case OP_LESS:
+            case OP_GREATER_EQUAL:
+            case OP_LESS_EQUAL:
                 if (vm->stack_count < 2) return VM_STACK_UNDERFLOW;
                 if (!pop(vm, &b) || !pop(vm, &a))
                     return VM_STACK_UNDERFLOW;
@@ -115,9 +117,13 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 } else {
                     if (a.type != VALUE_NUMBER || b.type != VALUE_NUMBER)
                         return VM_TYPE_ERROR;
-                    bool comparison = instruction == OP_GREATER
-                        ? a.as.number > b.as.number
-                        : a.as.number < b.as.number;
+                    bool comparison;
+                    switch ((OpCode)instruction) {
+                        case OP_GREATER: comparison = a.as.number > b.as.number; break;
+                        case OP_LESS: comparison = a.as.number < b.as.number; break;
+                        case OP_GREATER_EQUAL: comparison = a.as.number >= b.as.number; break;
+                        default: comparison = a.as.number <= b.as.number; break;
+                    }
                     if (!push(vm, value_bool(comparison)))
                         return VM_STACK_OVERFLOW;
                 }
