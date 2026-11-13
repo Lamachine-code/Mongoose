@@ -23,6 +23,7 @@
 - `+`, `-`, `*`, `/`, `//`, `%`, `^`, `==`, `!=`, `<`, `>`, `<=`, `>=`.
 - Unary minus and `not`.
 - `print(value)` with exactly one argument.
+- Conditional `if condition then ... else ... stop` statements with nested block scopes.
 
 The current compiler rejects unsupported constructs with a source-positioned
 compile diagnostic rather than emitting partial bytecode and pretending the
@@ -44,8 +45,8 @@ program is executable.
 
 ## Not implemented
 
-- Local variables and runtime lexical scopes.
-- Conditional jumps, `if`, loops and short-circuit `and/or`.
+- Function-local variables and call-frame storage (block-scoped variables currently use unique VM global slots).
+- Loops and short-circuit `and/or`.
 - Function objects, call frames, parameters and returns.
 - Arrays and `new_array()`.
 - Strings, closures, modules and garbage collection.
