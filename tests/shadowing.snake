@@ -1,0 +1,1 @@
+let value = 1\nif true then\n    let value = 2\nstop\n
