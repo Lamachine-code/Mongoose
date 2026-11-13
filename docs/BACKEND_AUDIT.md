@@ -13,14 +13,14 @@
 - CLI pipeline: lex → parse → semantic analysis → compile → execute.
 - Frontend-only checker retained as `mongoose_check` so syntax/semantic
   tests for not-yet-executable constructs remain useful.
-- Regression fixture for global variables and arithmetic output.
+- Regression fixtures for global variables, assignment, arithmetic and inclusive comparisons.
 
 ## Executable source subset
 
 - Top-level `let` declarations.
 - Global variable reads and assignments.
 - Numeric and boolean literals.
-- `+`, `-`, `*`, `/`, `//`, `%`, `^`, `==`, `!=`, `<`, `>`.
+- `+`, `-`, `*`, `/`, `//`, `%`, `^`, `==`, `!=`, `<`, `>`, `<=`, `>=`.
 - Unary minus and `not`.
 - `print(value)` with exactly one argument.
 
