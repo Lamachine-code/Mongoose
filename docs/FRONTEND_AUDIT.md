@@ -59,3 +59,42 @@ The frontend deliverable is:
 
 Bytecode generation, VM execution, runtime array behavior and a GUI are
 outside this frontend task.
+
+## Current implementation status
+
+The branch now contains a replacement frontend entry point in
+`src/frontend.c`, with its public data structures in `include/mongoose.h`.
+CMake builds this translation unit directly instead of compiling the old
+entry point that textually included other `.c` files. The old service files
+are retained for comparison and have not yet been migrated or removed.
+
+Implemented in the replacement frontend:
+
+- zero-copy token slices, underscore-prefixed identifiers, decimal numbers,
+  line/column tracking, comments, and compound operators;
+- whole-file parsing into a program/block AST, including declarations,
+  functions, calls, indexing, assignment, conditionals and returns;
+- recursive AST destruction on successful and failed parses;
+- lexical scopes, local duplicate detection, nested lookup, function
+  predeclaration for recursion/forward calls, undefined-name checks and
+  return-context checks;
+- a CLI that runs lexing, parsing and semantic analysis in sequence.
+
+Known limitations that remain before calling the frontend complete:
+
+- the current implementation is concentrated in one translation unit rather
+  than fully separated lexer/parser/semantic modules;
+- function-call arity is not checked, and the `new_array` builtin is only
+  recognized, not implemented;
+- parser diagnostics stop at the first error rather than recovering to report
+  multiple errors;
+- the committed automated test currently exercises the golden-master sample;
+  focused unit tests for malformed input, scope edge cases, allocation
+  failures and operator precedence still need to be added;
+- static type checking is intentionally out of scope;
+- the old service implementations remain in the repository and should be
+  removed or migrated once compatibility has been reviewed.
+
+The CI workflow now builds the new executable and runs CTest against
+`golden-master.snake`. A passing CI run is required before this branch is
+ready for review.
