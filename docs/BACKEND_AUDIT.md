@@ -3,56 +3,67 @@
 ## Implemented
 
 - Tagged runtime values: nil, booleans and numbers.
-- Growable bytecode chunks with source-line metadata and a constant pool.
-- 16-bit little-endian constant-pool indices.
-- Stack VM with a 256-value operand stack.
-- Arithmetic, floor division, modulo, power, unary operations and comparisons.
-- 256 global variable slots, with define/get/set instructions.
-- A native `print(value)` instruction exposed as a language builtin.
-- AST-to-bytecode compilation for the currently executable subset.
-- CLI pipeline: lex → parse → semantic analysis → compile → execute.
-- Frontend-only checker retained as `mongoose_check` so syntax/semantic
-  tests for not-yet-executable constructs remain useful.
-- Regression fixtures for global variables, assignment, arithmetic and inclusive comparisons.
+- Bytecode chunks with source-line metadata, a constant pool and function metadata.
+- Stack-based VM with arithmetic, comparisons, global variables and conditional jumps.
+- AST-to-bytecode compilation and executable CLI pipeline.
+- Builtin `print(value)`.
+- User-defined functions with positional parameters, local variables, return values and recursive calls.
+- Per-call VM frames with a saved instruction pointer and operand-stack base.
+- Local variable load/store instructions.
+- Short-circuit evaluation for `and` and `or`.
+- Frontend-only checker retained as `mongoose_check`.
 
 ## Executable source subset
 
-- Top-level `let` declarations.
-- Global variable reads and assignments.
+- Top-level `let` declarations, global reads and assignments.
 - Numeric and boolean literals.
-- `+`, `-`, `*`, `/`, `//`, `%`, `^`, `==`, `!=`, `<`, `>`, `<=`, `>=`.
+- Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `^`.
+- Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
 - Unary minus and `not`.
 - `print(value)` with exactly one argument.
-- Conditional `if condition then ... else ... stop` statements with nested block scopes.
+- `if condition then ... else ... stop` with block scopes.
+- Function declarations, positional arguments, local `let`, calls and `return`.
+- Recursive and forward function calls.
+- Short-circuit `and` / `or`.
 
-The current compiler rejects unsupported constructs with a source-positioned
-compile diagnostic rather than emitting partial bytecode and pretending the
-program is executable.
+## Runtime architecture
 
-## Runtime semantics and limitations
+A call evaluates its arguments on the operand stack, then executes `OP_CALL`.
+The VM records the caller's next instruction and the stack position at which
+the callee's arguments begin. That position becomes local slot zero. Parameters
+and local declarations are addressed relative to this base, so recursive calls
+receive independent storage.
 
-- Only nil and false are falsey; numeric zero is truthy.
-- Arithmetic and ordering require numeric operands.
-- Division, floor division and modulo by zero produce VM errors.
-- Floor division uses mathematical floor.
-- Modulo currently uses C `fmod` semantics; negative-operand behavior remains
-  an open language-design decision.
-- Equality compares same-typed primitive values; different types are unequal.
-- Global slots are limited to 256 in this initial compiler/VM slice.
-- Global slots are assigned in declaration order for each compiled program.
-- Runtime error reporting currently identifies the error category but does not
-  yet map the failing instruction back to its source line in the CLI.
+`OP_RETURN` removes the returned value, discards the callee's locals and
+temporaries, restores the caller's stack position, pushes the return value,
+and resumes at the saved instruction pointer.
 
-## Not implemented
+Function entry points and arities are stored in the bytecode chunk. The
+compiler predeclares function indices before compiling bodies, allowing
+forward calls and recursion.
 
-- Function-local variables and call-frame storage (block-scoped variables currently use unique VM global slots).
-- Loops and short-circuit `and/or`.
-- Function objects, call frames, parameters and returns.
-- Arrays and `new_array()`.
-- Strings, closures, modules and garbage collection.
+Short-circuit logical operations use conditional jumps that preserve the
+left operand when it determines the result. Otherwise, the left operand is
+discarded and the right operand is evaluated.
 
-## Next milestone
+## Current limits
 
-Add bytecode control flow and local scopes, then function call frames and
-parameter/local-variable access. These are prerequisites for executing the
-function and conditional constructs already accepted by the frontend.
+- Operand stack: 256 values.
+- Call-frame depth: 64.
+- Maximum function arity and local slot index are constrained by 8-bit operands.
+- Maximum 255 user-defined functions in one chunk.
+- Global slots: 256.
+- Arrays, strings, loops, closures, modules and garbage collection are not implemented.
+- Runtime diagnostics do not yet map all failures to source lines.
+- Modulo still follows C `fmod` behavior for negative operands; language semantics remain to be specified.
+
+## Regression coverage added in this milestone
+
+- Basic function call and parameter passing.
+- Local variable declarations and reads.
+- Recursive factorial.
+- Short-circuit `and` and `or`, using division by zero as a guard to prove the skipped operand is not evaluated.
+
+The next backend milestone can focus on arrays and indexed assignment, which are
+already represented in the frontend AST and are used by the golden-master
+program.
