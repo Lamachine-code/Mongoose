@@ -1,0 +1,8 @@
+let x = 4
+if x > 3 then
+    let y = 10
+    print(y)
+else
+    let y = 20
+    print(y)
+stop
