@@ -1,0 +1,1 @@
+function target()\nstop\ntarget = 3\n
