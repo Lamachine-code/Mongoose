@@ -25,6 +25,8 @@ static const char *vm_error(VMResult result) {
   case VM_TYPE_ERROR:return "runtime type error";
   case VM_DIVISION_BY_ZERO:return "division by zero";
   case VM_UNDEFINED_GLOBAL:return "undefined global variable";
+  case VM_CALL_OVERFLOW:return "maximum call depth exceeded";
+  case VM_ARITY_ERROR:return "incorrect function argument count";
   case VM_OK:return "success";
  }
  return "unknown runtime error";
