@@ -1,0 +1,6 @@
+let y = 1
+if true then
+    let y = 2
+    print(y)
+stop
+print(y)
