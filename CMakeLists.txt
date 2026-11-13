@@ -61,4 +61,4 @@ set_tests_properties(runtime_executes_true_if_branch PROPERTIES PASS_REGULAR_EXP
 add_test(NAME runtime_executes_false_if_branch COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_if_false.snake)
 set_tests_properties(runtime_executes_false_if_branch PROPERTIES PASS_REGULAR_EXPRESSION "2")
 add_test(NAME runtime_preserves_outer_scope COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_if_scope.snake)
-set_tests_properties(runtime_preserves_outer_scope PROPERTIES PASS_REGULAR_EXPRESSION "2")
+set_tests_properties(runtime_preserves_outer_scope PROPERTIES PASS_REGULAR_EXPRESSION "11")
