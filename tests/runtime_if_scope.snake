@@ -3,4 +3,4 @@ if true then
     let y = 2
     print(y)
 stop
-print(y)
+print(y * 10 + 1)
