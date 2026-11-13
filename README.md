@@ -21,7 +21,7 @@ ctest --test-dir build --output-on-failure
 The first executable runtime slice supports top-level global variable
 declarations, variable reads and assignments, numeric/boolean literals,
 arithmetic and basic equality/order comparisons, unary minus and `not`,
-and the one-argument builtin `print(value)`.
+conditional `if/else/stop` blocks, and the one-argument builtin `print(value)`.
 
 Example:
 
