@@ -1,1 +1,4 @@
-let value = 1\nif true then\n    let value = 2\nstop\n
+let value = 1
+if true then
+    let value = 2
+stop
