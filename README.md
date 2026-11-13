@@ -1,10 +1,10 @@
 # Mongoose
 
-Mongoose is an experimental compiled-language project written in ISO C.
-The repository currently contains a working compiler frontend and the first
-independently tested bytecode virtual-machine layer.
+Mongoose is an experimental compiled-language project written in strict ISO C.
+The current command-line executable now runs a first end-to-end source program
+through the frontend, bytecode compiler and stack-based virtual machine.
 
-## Build
+## Build and test
 
 ```sh
 cmake -S . -B build
@@ -12,34 +12,46 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-## Current command-line frontend
+## Run a program
 
 ```sh
-./build/bin/mongoose golden-master.snake
+./build/bin/mongoose tests/runtime_globals.snake
 ```
 
-The executable currently runs these stages:
+The first executable runtime slice supports top-level global variable
+declarations, variable reads and assignments, numeric/boolean literals,
+arithmetic and basic equality/order comparisons, unary minus and `not`,
+and the one-argument builtin `print(value)`.
 
-1. lexical analysis (tokens borrow slices of the source buffer);
-2. parsing into a whole-program AST;
-3. lexical-scope and semantic validation.
+Example:
 
-A successful run reports that the source is valid. It does **not yet** compile
-that source into bytecode or execute it.
+```mongoose
+let a = 10
+let b = 20
+let result = a + b
+print(result)
+```
 
-## Bytecode runtime foundation
+Output:
 
-The backend foundation is now present as a separate C library:
+```text
+30
+```
 
-- `Value`: tagged runtime values (nil, boolean and number);
-- `Chunk`: dynamically allocated bytecode and source-line metadata;
-- constant pool: constants referenced by 16-bit indices;
-- `VM`: stack-based interpreter for constants, arithmetic, comparisons,
-  unary operations and return.
+This is an intentionally small executable subset. Functions, conditional
+statements, nested runtime scopes, arrays, short-circuit logical operators,
+and user-defined function calls are not executable yet. The frontend checker
+is retained separately as `mongoose_check`, so the broader parser and semantic
+regression suite can continue to validate syntax that the runtime compiler
+has not implemented.
 
-The `mongoose_vm_smoke` test constructs bytecode directly and verifies that
-the VM evaluates `10 + 20` to `30`. The next integration step is compiling
-the existing AST into this bytecode, then connecting execution to the CLI.
+## Architecture
+
+1. Lexer: tokens borrow slices of the source buffer.
+2. Parser: builds the whole-program AST.
+3. Semantic analysis: validates lexical scopes and identifiers.
+4. Bytecode compiler: lowers the supported AST subset into a `Chunk`.
+5. VM: executes bytecode using a tagged `Value` stack and global slots.
 
 See [docs/LANGUAGE_GRAMMAR.md](docs/LANGUAGE_GRAMMAR.md),
 [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md), and
