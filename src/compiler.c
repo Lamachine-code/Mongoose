@@ -98,7 +98,7 @@ static bool expression(Compiler *c, Node *node) {
                 memcmp(node->as.call.name.name, "print", 5) == 0) {
                 if (node->as.call.arg_count != 1)
                     return fail(c, node->token, "print() expects exactly one argument");
-                return expression(c, node->as.call.args[0]) && emit(c, OP_PRINT, node->token);
+                return expression(c, node->as.call.args[0]) && emit(c, OP_PRINT, node->token) && emit(c, OP_NIL, node->token);
             }
             return fail(c, node->token, "function calls are not implemented by the runtime compiler yet");
         case N_ASSIGN: {
