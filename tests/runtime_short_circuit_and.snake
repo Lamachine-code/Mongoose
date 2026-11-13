@@ -1,0 +1,2 @@
+let result = false and missing()
+print(result)
