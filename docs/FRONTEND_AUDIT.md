@@ -62,11 +62,12 @@ outside this frontend task.
 
 ## Current implementation status
 
-The branch now contains a replacement frontend entry point in
-`src/frontend.c`, with its public data structures in `include/mongoose.h`.
-CMake builds this translation unit directly instead of compiling the old
-entry point that textually included other `.c` files. The old service files
-are retained for comparison and have not yet been migrated or removed.
+The branch now contains independent frontend translation units:
+`src/lexer_frontend.c`, `src/parser_frontend.c`,
+`src/semantic_frontend.c` and `src/main_frontend.c`. Their shared public
+structures are declared in `include/mongoose.h`. CMake compiles these modules
+separately; the original service files remain in the repository for comparison
+and have not yet been migrated or removed.
 
 Implemented in the replacement frontend:
 
@@ -82,15 +83,14 @@ Implemented in the replacement frontend:
 
 Known limitations that remain before calling the frontend complete:
 
-- the current implementation is concentrated in one translation unit rather
-  than fully separated lexer/parser/semantic modules;
 - function-call arity is not checked, and the `new_array` builtin is only
   recognized, not implemented;
 - parser diagnostics stop at the first error rather than recovering to report
   multiple errors;
-- the committed automated test currently exercises the golden-master sample;
-  focused unit tests for malformed input, scope edge cases, allocation
-  failures and operator precedence still need to be added;
+- the automated suite currently covers the golden-master program, floor
+  division, undefined identifiers, invalid return context, forward function
+  calls, lexical shadowing and assignment to a function name; focused tests for
+  malformed input, allocation failures and exact operator-tree shape remain;
 - static type checking is intentionally out of scope;
 - the old service implementations remain in the repository and should be
   removed or migrated once compatibility has been reviewed.
