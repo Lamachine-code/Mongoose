@@ -1,0 +1,3 @@
+let numerator = 8
+let denominator = 2
+let quotient = numerator // denominator
