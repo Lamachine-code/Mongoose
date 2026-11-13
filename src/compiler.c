@@ -4,12 +4,14 @@
 
 #define COMPILER_GLOBAL_MAX 256
 
-typedef struct { Name name; uint8_t slot; } Global;
+typedef struct { Name name; uint8_t slot; bool active; } Global;
 typedef struct {
     Chunk *chunk;
     Diagnostic *error;
     Global globals[COMPILER_GLOBAL_MAX];
     size_t global_count;
+    size_t scope_marks[64];
+    size_t scope_depth;
 } Compiler;
 
 static bool same_name(Name a, Name b) {
@@ -36,7 +38,7 @@ static bool emit_slot(Compiler *c, OpCode op, uint8_t slot, Token token) {
 
 static int find_global(Compiler *c, Name name) {
     for (size_t i = 0; i < c->global_count; ++i)
-        if (same_name(c->globals[i].name, name)) return (int)c->globals[i].slot;
+        if (c->globals[i].active && same_name(c->globals[i].name, name)) return (int)c->globals[i].slot;
     return -1;
 }
 
@@ -46,7 +48,39 @@ static bool add_global(Compiler *c, Name name, Token token, uint8_t *slot) {
     if (c->global_count == COMPILER_GLOBAL_MAX)
         return fail(c, token, "too many global variables (maximum is 256)");
     *slot = (uint8_t)c->global_count;
-    c->globals[c->global_count++] = (Global){name, *slot};
+    c->globals[c->global_count++] = (Global){name, *slot, true};
+    return true;
+}
+
+
+static bool enter_scope(Compiler *c, Token token) {
+    if (c->scope_depth == sizeof c->scope_marks / sizeof c->scope_marks[0])
+        return fail(c, token, "compiler scope nesting limit exceeded");
+    c->scope_marks[c->scope_depth++] = c->global_count;
+    return true;
+}
+
+static void leave_scope(Compiler *c) {
+    if (c->scope_depth == 0) return;
+    size_t mark = c->scope_marks[--c->scope_depth];
+    for (size_t i = mark; i < c->global_count; ++i)
+        c->globals[i].active = false;
+}
+
+static bool emit_jump(Compiler *c, OpCode op, Token token, size_t *operand) {
+    if (!emit(c, op, token)) return false;
+    *operand = c->chunk->count;
+    return (chunk_write(c->chunk, 0xffu, token.line) &&
+            chunk_write(c->chunk, 0xffu, token.line)) ||
+           fail(c, token, "out of memory while emitting jump");
+}
+
+static bool patch_jump(Compiler *c, size_t operand, Token token) {
+    size_t distance = c->chunk->count - (operand + 2);
+    if (distance > UINT16_MAX)
+        return fail(c, token, "conditional branch exceeds 65535 bytes");
+    c->chunk->code[operand] = (uint8_t)(distance & 0xffu);
+    c->chunk->code[operand + 1] = (uint8_t)(distance >> 8);
     return true;
 }
 
@@ -126,9 +160,26 @@ static bool statement(Compiler *c, Node *node) {
             return emit_slot(c, OP_DEFINE_GLOBAL, slot, node->token);
         }
         case N_FUNCTION: return fail(c, node->token, "function declarations are not executable yet");
-        case N_IF: return fail(c, node->token, "if statements are not executable yet");
+        case N_IF: {
+            size_t else_jump, end_jump;
+            if (!expression(c, node->as.conditional.condition) ||
+                !emit_jump(c, OP_JUMP_IF_FALSE, node->token, &else_jump) ||
+                !statement(c, node->as.conditional.then_branch) ||
+                !emit_jump(c, OP_JUMP, node->token, &end_jump) ||
+                !patch_jump(c, else_jump, node->token)) return false;
+            if (node->as.conditional.else_branch &&
+                !statement(c, node->as.conditional.else_branch)) return false;
+            return patch_jump(c, end_jump, node->token);
+        }
         case N_RETURN: return fail(c, node->token, "return statements are not executable yet");
-        case N_BLOCK: return fail(c, node->token, "nested blocks are not executable yet");
+        case N_BLOCK: {
+            if (!enter_scope(c, node->token)) return false;
+            bool ok = true;
+            for (size_t i = 0; i < node->as.list.count && ok; ++i)
+                ok = statement(c, node->as.list.items[i]);
+            leave_scope(c);
+            return ok;
+        }
         default:
             return expression(c, node) && emit(c, OP_POP, node->token);
     }
