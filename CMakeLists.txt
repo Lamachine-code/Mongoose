@@ -52,5 +52,7 @@ add_test(NAME runtime_executes_global_variables COMMAND mongoose ${CMAKE_CURRENT
 set_tests_properties(runtime_executes_global_variables PROPERTIES PASS_REGULAR_EXPRESSION "30")
 add_test(NAME runtime_supports_relational_operators COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_comparisons.snake)
 set_tests_properties(runtime_supports_relational_operators PROPERTIES PASS_REGULAR_EXPRESSION "true")
+add_test(NAME runtime_supports_greater_equal COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_greater_equal.snake)
+set_tests_properties(runtime_supports_greater_equal PROPERTIES PASS_REGULAR_EXPRESSION "false")
 add_test(NAME runtime_supports_global_assignment COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_assignment.snake)
 set_tests_properties(runtime_supports_global_assignment PROPERTIES PASS_REGULAR_EXPRESSION "12")
