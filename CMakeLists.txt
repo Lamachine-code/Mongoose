@@ -10,7 +10,9 @@ add_executable(mongoose
   src/lexer_frontend.c
   src/parser_frontend.c
   src/semantic_frontend.c
+  src/compiler.c
 )
+target_link_libraries(mongoose PRIVATE mongoose_vm)
 target_include_directories(mongoose PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(mongoose PRIVATE -Wall -Wextra -Wpedantic -Werror)
