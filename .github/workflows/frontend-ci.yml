@@ -1,16 +1,11 @@
 name: Compiler frontend CI
-
 on:
   push:
-    branches:
-      - main
-      - feature/compiler-frontend-completion
+    branches: [main, feature/compiler-frontend-completion]
   pull_request:
-    branches:
-      - main
-
+    branches: [main]
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,3 +15,5 @@ jobs:
         run: cmake -S . -B build
       - name: Build
         run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
