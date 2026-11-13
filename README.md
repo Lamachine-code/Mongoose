@@ -1,9 +1,8 @@
 # Mongoose
 
-Mongoose is an experimental compiled-language project. The current branch
-contains a C frontend prototype: lexer, parser, AST construction and a first
-semantic-validation pass. Bytecode generation and VM execution are not part
-of this frontend milestone.
+Mongoose is an experimental compiled-language project written in ISO C.
+The repository currently contains a working compiler frontend and the first
+independently tested bytecode virtual-machine layer.
 
 ## Build
 
@@ -13,26 +12,35 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-## Run the frontend
+## Current command-line frontend
 
 ```sh
 ./build/bin/mongoose golden-master.snake
 ```
 
-The executable reads one source file and runs the stages in order:
+The executable currently runs these stages:
 
 1. lexical analysis (tokens borrow slices of the source buffer);
 2. parsing into a whole-program AST;
 3. lexical-scope and semantic validation.
 
-A successful run prints a short validation message. A failed run reports
-the first diagnostic with its source line and column and exits non-zero.
+A successful run reports that the source is valid. It does **not yet** compile
+that source into bytecode or execute it.
 
-## Current language surface
+## Bytecode runtime foundation
 
-See [docs/LANGUAGE_GRAMMAR.md](docs/LANGUAGE_GRAMMAR.md) for the documented
-syntax and semantic baseline, and [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md)
-for known limitations and remaining work.
+The backend foundation is now present as a separate C library:
 
-This is not yet a bytecode compiler: the frontend validates source but does
-not emit bytecode or execute programs.
+- `Value`: tagged runtime values (nil, boolean and number);
+- `Chunk`: dynamically allocated bytecode and source-line metadata;
+- constant pool: constants referenced by 16-bit indices;
+- `VM`: stack-based interpreter for constants, arithmetic, comparisons,
+  unary operations and return.
+
+The `mongoose_vm_smoke` test constructs bytecode directly and verifies that
+the VM evaluates `10 + 20` to `30`. The next integration step is compiling
+the existing AST into this bytecode, then connecting execution to the CLI.
+
+See [docs/LANGUAGE_GRAMMAR.md](docs/LANGUAGE_GRAMMAR.md),
+[docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md), and
+[docs/BACKEND_AUDIT.md](docs/BACKEND_AUDIT.md).
