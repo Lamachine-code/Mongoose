@@ -202,8 +202,10 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
             case OP_CALL: {
                 if (ip >= chunk->count) return VM_INVALID_BYTECODE;
                 uint8_t index = chunk->code[ip++];
-                if (index >= chunk->function_count) return VM_INVALID_BYTECODE;
+                if (!chunk->functions || index >= chunk->function_count)
+                    return VM_INVALID_BYTECODE;
                 FunctionInfo function = chunk->functions[index];
+                if (function.offset >= chunk->count) return VM_INVALID_BYTECODE;
                 if (vm->stack_count < function.arity) return VM_STACK_UNDERFLOW;
                 if (vm->frame_count == VM_FRAMES_MAX) return VM_CALL_OVERFLOW;
                 size_t base = vm->stack_count - function.arity;
