@@ -37,14 +37,20 @@ static bool emit_slot(Compiler *c, OpCode op, uint8_t slot, Token token) {
 }
 
 static int find_global(Compiler *c, Name name) {
-    for (size_t i = 0; i < c->global_count; ++i)
-        if (c->globals[i].active && same_name(c->globals[i].name, name)) return (int)c->globals[i].slot;
+    for (size_t i = c->global_count; i > 0; --i)
+        if (c->globals[i - 1].active &&
+            same_name(c->globals[i - 1].name, name))
+            return (int)c->globals[i - 1].slot;
     return -1;
 }
 
 static bool add_global(Compiler *c, Name name, Token token, uint8_t *slot) {
-    int found = find_global(c, name);
-    if (found >= 0) return fail(c, token, "duplicate global variable");
+    size_t scope_start = c->scope_depth
+        ? c->scope_marks[c->scope_depth - 1] : 0;
+    for (size_t i = scope_start; i < c->global_count; ++i) {
+        if (c->globals[i].active && same_name(c->globals[i].name, name))
+            return fail(c, token, "duplicate variable in the same scope");
+    }
     if (c->global_count == COMPILER_GLOBAL_MAX)
         return fail(c, token, "too many global variables (maximum is 256)");
     *slot = (uint8_t)c->global_count;
