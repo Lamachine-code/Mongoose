@@ -1,0 +1,7 @@
+function calculate(value)
+    let doubled = value * 2
+    let result = doubled + 1
+    return result
+stop
+
+print(calculate(5))
