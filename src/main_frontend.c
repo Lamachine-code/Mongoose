@@ -1,0 +1,4 @@
+#include "mongoose.h"
+#include <stdio.h>
+#include <stdlib.h>
+int main(int argc,char**argv){if(argc!=2){fprintf(stderr,"usage: mongoose <source.snake>\n");return 2;}FILE*f=fopen(argv[1],"rb");if(!f){perror(argv[1]);return 2;}if(fseek(f,0,SEEK_END)){fclose(f);return 2;}long z=ftell(f);rewind(f);if(z<0){fclose(f);return 2;}char*src=malloc((size_t)z+1);if(!src){fclose(f);return 2;}size_t got=fread(src,1,(size_t)z,f);fclose(f);src[got]=0;Diagnostic d={0};TokenArray ts={0};Ast ast={0};bool ok=lex_source(src,&ts,&d);if(ok)ok=parse_tokens(&ts,&ast,&d);if(ok)ok=analyze_ast(&ast,&d);if(!ok)fprintf(stderr,"%s:%d:%d: %s\n",argv[1],d.line,d.column,d.message[0]?d.message:"frontend failed");else printf("Frontend OK: %zu tokens; complete program parsed and semantically validated.\n",ts.count);free_ast(&ast);free_tokens(&ts);free(src);return ok?0:1;}
