@@ -113,7 +113,7 @@ static bool binary(Compiler*c,Node*n) {
     if(type==T_AND||type==T_OR) {
         size_t jump;
         if(!expression(c,n->as.binary.left))return false;
-        if(!emit_jump(c,type==T_AND?OP_JUMP_IF_FALSE:OP_JUMP_IF_TRUE,n->token,&jump))return false;
+        if(!emit_jump(c,type==T_AND?OP_JUMP_IF_FALSE_KEEP:OP_JUMP_IF_TRUE_KEEP,n->token,&jump))return false;
         if(!emit(c,OP_POP,n->token)||!expression(c,n->as.binary.right))return false;
         return patch_jump(c,jump,n->token);
     }
