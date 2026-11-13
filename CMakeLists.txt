@@ -31,3 +31,6 @@ set_tests_properties(return_outside_function_is_rejected PROPERTIES WILL_FAIL TR
 
 add_test(NAME forward_function_call
   COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/forward_function_call.snake)
+
+add_test(NAME lexical_shadowing
+  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/shadowing.snake)
