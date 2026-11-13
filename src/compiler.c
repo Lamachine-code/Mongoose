@@ -228,6 +228,7 @@ bool compile_ast(const Ast*ast,Chunk*chunk,Diagnostic*error) {
         uint8_t index;
         if(!chunk_add_function(chunk,chunk->count,(uint8_t)f->as.function.param_count,&index))
             return fail(&c,f->token,"cannot register function");
+        (void)index;
         c.in_function=true;c.local_count=0;c.scope_depth=0;
         for(size_t p=0;p<f->as.function.param_count;p++) {
             uint8_t slot;
