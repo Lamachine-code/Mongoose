@@ -69,6 +69,8 @@ static bool binary(Compiler *c, Node *node) {
             return emit(c, OP_EQUAL, node->token) && emit(c, OP_NOT, node->token);
         case T_GT: op = OP_GREATER; break;
         case T_LT: op = OP_LESS; break;
+        case T_GE: op = OP_GREATER_EQUAL; break;
+        case T_LE: op = OP_LESS_EQUAL; break;
         default: return fail(c, node->as.binary.op, "this binary operator is not implemented by the bytecode compiler yet");
     }
     return emit(c, op, node->token);
