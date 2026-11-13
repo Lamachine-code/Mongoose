@@ -5,58 +5,47 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_executable(mongoose
-  src/main_frontend.c
-  src/lexer_frontend.c
-  src/parser_frontend.c
-  src/semantic_frontend.c
-  src/compiler.c
-)
-target_link_libraries(mongoose PRIVATE mongoose_vm)
-target_include_directories(mongoose PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(mongoose PRIVATE -Wall -Wextra -Wpedantic -Werror)
-endif()
-
-add_library(mongoose_vm
-  src/value.c
-  src/chunk.c
-  src/vm.c
-)
+add_library(mongoose_vm src/value.c src/chunk.c src/vm.c)
 target_include_directories(mongoose_vm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(mongoose_vm PRIVATE -Wall -Wextra -Wpedantic -Werror)
+ target_compile_options(mongoose_vm PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 if(UNIX)
-  target_link_libraries(mongoose_vm PUBLIC m)
+ target_link_libraries(mongoose_vm PUBLIC m)
+endif()
+
+add_executable(mongoose
+ src/main_frontend.c src/lexer_frontend.c src/parser_frontend.c
+ src/semantic_frontend.c src/compiler.c)
+target_include_directories(mongoose PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(mongoose PRIVATE mongoose_vm)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+ target_compile_options(mongoose PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+
+add_executable(mongoose_check
+ src/main_check.c src/lexer_frontend.c src/parser_frontend.c src/semantic_frontend.c)
+target_include_directories(mongoose_check PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+ target_compile_options(mongoose_check PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
 enable_testing()
-add_test(NAME golden_master_frontend
-  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/golden-master.snake)
-
-add_test(NAME floor_division_is_not_a_comment
-  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/floor_division.snake)
-add_test(NAME undefined_identifier_is_rejected
-  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/undefined_identifier.snake)
+add_test(NAME golden_master_frontend COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/golden-master.snake)
+add_test(NAME floor_division_is_not_a_comment COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/floor_division.snake)
+add_test(NAME undefined_identifier_is_rejected COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/undefined_identifier.snake)
 set_tests_properties(undefined_identifier_is_rejected PROPERTIES WILL_FAIL TRUE)
-add_test(NAME return_outside_function_is_rejected
-  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/return_outside_function.snake)
+add_test(NAME return_outside_function_is_rejected COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/return_outside_function.snake)
 set_tests_properties(return_outside_function_is_rejected PROPERTIES WILL_FAIL TRUE)
-
-add_test(NAME forward_function_call
-  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/forward_function_call.snake)
-
-add_test(NAME lexical_shadowing
-  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/shadowing.snake)
-
-add_test(NAME assignment_to_function_is_rejected
-  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/assign_function_is_rejected.snake)
+add_test(NAME forward_function_call COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/forward_function_call.snake)
+add_test(NAME lexical_shadowing COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/shadowing.snake)
+add_test(NAME assignment_to_function_is_rejected COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/assign_function_is_rejected.snake)
 set_tests_properties(assignment_to_function_is_rejected PROPERTIES WILL_FAIL TRUE)
 
 add_executable(mongoose_vm_smoke tests/vm_smoke.c)
 target_link_libraries(mongoose_vm_smoke PRIVATE mongoose_vm)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(mongoose_vm_smoke PRIVATE -Wall -Wextra -Wpedantic -Werror)
+ target_compile_options(mongoose_vm_smoke PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME vm_executes_arithmetic_bytecode COMMAND mongoose_vm_smoke)
+add_test(NAME runtime_executes_global_variables COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_globals.snake)
