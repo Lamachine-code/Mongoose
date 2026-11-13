@@ -1,8 +1,8 @@
 # Mongoose language grammar (frontend baseline)
 
-This grammar describes the language surface currently represented by the
-repository's token and AST types. It is a baseline for implementation, not a
-claim that every production is already accepted by the parser.
+This grammar documents the frontend implemented on the
+`feature/compiler-frontend-completion` branch. It describes the supported
+source syntax; bytecode generation and execution are separate backend work.
 
 ## Lexical conventions
 
@@ -13,12 +13,11 @@ claim that every production is already accepted by the parser.
 - Newlines separate statements.
 - Keywords are `let`, `function`, `if`, `then`, `else`, `stop`,
   `return`, `and`, `or` and `not`.
-- The current lexer recognizes `#` line comments.
-- The current lexer recognizes `//` as the floor-division operator.
-- `golden-master.snake` currently uses `//` for comments, which conflicts
-  with the existing floor-division token. This is an unresolved language
-  design inconsistency; the frontend must not silently reinterpret `//`
-  without a documented lexical rule.
+- `#` starts a line comment.
+- `//` starts a line comment when it is the first non-whitespace text on a
+  line; otherwise it is the floor-division operator. This preserves the
+  comments in `golden-master.snake` and still permits expressions such as
+  `quotient = numerator // denominator`.
 
 ## EBNF
 
