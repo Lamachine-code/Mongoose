@@ -174,9 +174,45 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 value_print(stdout, a);
                 fputc('\n', stdout);
                 break;
-            case OP_RETURN:
-                if (!pop(vm, &vm->result)) return VM_STACK_UNDERFLOW;
-                return VM_OK;
+            case OP_GET_LOCAL:
+            case OP_SET_LOCAL: {
+                if (ip >= chunk->count || vm->frame_count == 0)
+                    return VM_INVALID_BYTECODE;
+                uint8_t slot = chunk->code[ip++];
+                size_t absolute = vm->frames[vm->frame_count - 1].base + slot;
+                if (absolute >= vm->stack_count) return VM_INVALID_BYTECODE;
+                if (instruction == OP_GET_LOCAL) {
+                    if (!push(vm, vm->stack[absolute])) return VM_STACK_OVERFLOW;
+                } else {
+                    if (vm->stack_count == 0) return VM_STACK_UNDERFLOW;
+                    vm->stack[absolute] = vm->stack[vm->stack_count - 1];
+                }
+                break;
+            }
+            case OP_CALL: {
+                if (ip >= chunk->count) return VM_INVALID_BYTECODE;
+                uint8_t index = chunk->code[ip++];
+                if (index >= chunk->function_count) return VM_INVALID_BYTECODE;
+                FunctionInfo function = chunk->functions[index];
+                if (vm->stack_count < function.arity) return VM_STACK_UNDERFLOW;
+                if (vm->frame_count == VM_FRAMES_MAX) return VM_CALL_OVERFLOW;
+                size_t base = vm->stack_count - function.arity;
+                vm->frames[vm->frame_count++] = (CallFrame){ip, base};
+                ip = function.offset;
+                break;
+            }
+            case OP_RETURN: {
+                if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (vm->frame_count == 0) {
+                    vm->result = a;
+                    return VM_OK;
+                }
+                CallFrame frame = vm->frames[--vm->frame_count];
+                vm->stack_count = frame.base;
+                if (!push(vm, a)) return VM_STACK_OVERFLOW;
+                ip = frame.return_ip;
+                break;
+            }
             default:
                 return VM_INVALID_BYTECODE;
         }
