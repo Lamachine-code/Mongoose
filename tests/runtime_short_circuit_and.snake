@@ -1,2 +1,2 @@
-let result = false and missing()
+let result = false and (1 / 0 == 0)
 print(result)
