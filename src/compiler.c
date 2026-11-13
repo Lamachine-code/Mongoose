@@ -179,7 +179,7 @@ static bool statement(Compiler*c,Node*n) {
         case N_VAR: {
             if(c->in_function) {
                 uint8_t slot;
-                return expression(c,n->as.var.value)&&add_local(c,n->as.var.name,n->token,&slot);
+                if(!expression(c,n->as.var.value)||!add_local(c,n->as.var.name,n->token,&slot))return false;\n                (void)slot; return true;
             }
             uint8_t slot;
             return expression(c,n->as.var.value)&&add_global(c,n->as.var.name,n->token,&slot)&&emit_slot(c,OP_DEFINE_GLOBAL,slot,n->token);
@@ -231,7 +231,7 @@ bool compile_ast(const Ast*ast,Chunk*chunk,Diagnostic*error) {
         c.in_function=true;c.local_count=0;c.scope_depth=0;
         for(size_t p=0;p<f->as.function.param_count;p++) {
             uint8_t slot;
-            if(!add_local(&c,f->as.function.params[p],f->token,&slot))return false;
+            if(!add_local(&c,f->as.function.params[p],f->token,&slot))return false;\n            (void)slot;
         }
         if(!statement(&c,f->as.function.body))return false;
         if(!emit(&c,OP_NIL,f->token)||!emit(&c,OP_RETURN,f->token))return false;
