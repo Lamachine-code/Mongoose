@@ -14,3 +14,12 @@ endif()
 enable_testing()
 add_test(NAME golden_master_frontend
   COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/golden-master.snake)
+
+add_test(NAME floor_division_is_not_a_comment
+  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/floor_division.snake)
+add_test(NAME undefined_identifier_is_rejected
+  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/undefined_identifier.snake)
+set_tests_properties(undefined_identifier_is_rejected PROPERTIES WILL_FAIL TRUE)
+add_test(NAME return_outside_function_is_rejected
+  COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/return_outside_function.snake)
+set_tests_properties(return_outside_function_is_rejected PROPERTIES WILL_FAIL TRUE)
