@@ -1,1 +1,6 @@
-function caller()\n    return later()\nstop\nfunction later()\n    return 1\nstop\n
+function caller()
+    return later()
+stop
+function later()
+    return 1
+stop
