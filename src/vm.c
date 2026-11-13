@@ -152,6 +152,23 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 }
                 break;
             }
+            case OP_JUMP:
+            case OP_JUMP_IF_FALSE: {
+                if (ip + 1 >= chunk->count) return VM_INVALID_BYTECODE;
+                uint16_t offset = (uint16_t)chunk->code[ip] |
+                    (uint16_t)((uint16_t)chunk->code[ip + 1] << 8);
+                ip += 2;
+                bool should_jump = true;
+                if (instruction == OP_JUMP_IF_FALSE) {
+                    if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                    should_jump = value_is_falsey(a);
+                }
+                if (should_jump) {
+                    if (offset > chunk->count - ip) return VM_INVALID_BYTECODE;
+                    ip += offset;
+                }
+                break;
+            }
             case OP_PRINT:
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 value_print(stdout, a);
