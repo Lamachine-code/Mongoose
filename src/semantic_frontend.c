@@ -2,13 +2,175 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/* Lexical semantic scopes. Function names are predeclared per block to allow recursion/forward calls. */
-typedef struct Scope{struct Scope*parent;Name*names;int*kinds;size_t n,c;}Scope;
-static bool same(Name a,Name b){return a.length==b.length&&!memcmp(a.name,b.name,a.length);}
-static int lookup(Scope*s,Name n){for(;s;s=s->parent)for(size_t i=0;i<s->n;i++)if(same(s->names[i],n))return s->kinds[i];return 0;}
-static bool define(Scope*s,Name n,int k,Token t,Diagnostic*e){for(size_t i=0;i<s->n;i++)if(same(s->names[i],n)){snprintf(e->message,sizeof e->message,"duplicate declaration '%.*s'",(int)n.length,n.name);e->line=t.line;e->column=t.column;return false;}if(s->n==s->c){size_t c=s->c?s->c*2:8;Name*a=realloc(s->names,c*sizeof*a);if(!a)return false;s->names=a;int*b=realloc(s->kinds,c*sizeof*b);if(!b)return false;s->kinds=b;s->c=c;}s->names[s->n]=n;s->kinds[s->n++]=k;return true;}
-static bool sem(Node*n,Scope*s,bool fn,Diagnostic*e);
-static bool semblock(Node*n,Scope*parent,bool fn,Diagnostic*e){Scope s={.parent=parent};for(size_t i=0;i<n->as.list.count;i++){Node*x=n->as.list.items[i];if(x->kind==N_FUNCTION&&!define(&s,x->as.function.name,2,x->token,e))goto bad;}for(size_t i=0;i<n->as.list.count;i++)if(!sem(n->as.list.items[i],&s,fn,e))goto bad;free(s.names);free(s.kinds);return true;bad:free(s.names);free(s.kinds);return false;}
-static bool sem(Node*n,Scope*s,bool fn,Diagnostic*e){if(!n)return true;switch(n->kind){case N_PROGRAM:case N_BLOCK:return semblock(n,s,fn,e);case N_VAR:if(!sem(n->as.var.value,s,fn,e))return false;return define(s,n->as.var.name,1,n->token,e);case N_IDENT:if(!lookup(s,n->as.name)){snprintf(e->message,sizeof e->message,"undefined identifier '%.*s'",(int)n->as.name.length,n->as.name.name);e->line=n->token.line;e->column=n->token.column;return false;}return true;case N_FUNCTION:{Scope local={.parent=s};for(size_t i=0;i<n->as.function.param_count;i++)if(!define(&local,n->as.function.params[i],1,n->token,e)){free(local.names);free(local.kinds);return false;}bool ok=semblock(n->as.function.body,&local,true,e);free(local.names);free(local.kinds);return ok;}case N_IF:return sem(n->as.conditional.condition,s,fn,e)&&sem(n->as.conditional.then_branch,s,fn,e)&&sem(n->as.conditional.else_branch,s,fn,e);case N_WHILE:return sem(n->as.loop.condition,s,fn,e)&&sem(n->as.loop.body,s,fn,e);case N_RETURN:if(!fn){snprintf(e->message,sizeof e->message,"return outside function");e->line=n->token.line;e->column=n->token.column;return false;}return sem(n->as.ret.value,s,fn,e);case N_CALL:if(!((n->as.call.name.length==9&&!memcmp(n->as.call.name.name,"new_array",9))||(n->as.call.name.length==5&&!memcmp(n->as.call.name.name,"print",5)))&&lookup(s,n->as.call.name)!=2){snprintf(e->message,sizeof e->message,"unknown function '%.*s'",(int)n->as.call.name.length,n->as.call.name.name);e->line=n->token.line;e->column=n->token.column;return false;}for(size_t i=0;i<n->as.call.arg_count;i++)if(!sem(n->as.call.args[i],s,fn,e))return false;return true;case N_UNARY:return sem(n->as.unary.operand,s,fn,e);case N_BINARY:return sem(n->as.binary.left,s,fn,e)&&sem(n->as.binary.right,s,fn,e);case N_INDEX:return sem(n->as.index.target,s,fn,e)&&sem(n->as.index.index,s,fn,e);case N_ASSIGN:if(n->as.assign.target->kind!=N_IDENT&&n->as.assign.target->kind!=N_INDEX){snprintf(e->message,sizeof e->message,"invalid assignment target");e->line=n->token.line;e->column=n->token.column;return false;}if(n->as.assign.target->kind==N_IDENT&&lookup(s,n->as.assign.target->as.name)!=1){snprintf(e->message,sizeof e->message,"assignment to undefined variable");e->line=n->token.line;e->column=n->token.column;return false;}return sem(n->as.assign.target,s,fn,e)&&sem(n->as.assign.value,s,fn,e);default:return true;}}
-bool analyze_ast(const Ast*a,Diagnostic*e){if(!a||!a->root||!e)return false;memset(e,0,sizeof*e);Scope g={0};bool ok=sem(a->root,&g,false,e);free(g.names);free(g.kinds);return ok;}
 
+/* Lexical scopes and context-sensitive control-flow validation. */
+typedef struct Scope {
+    struct Scope *parent;
+    Name *names;
+    int *kinds;
+    size_t count, capacity;
+} Scope;
+
+static bool same(Name a, Name b) {
+    return a.length == b.length && memcmp(a.name, b.name, a.length) == 0;
+}
+
+static int lookup(Scope *scope, Name name) {
+    for (; scope; scope = scope->parent)
+        for (size_t i = 0; i < scope->count; ++i)
+            if (same(scope->names[i], name)) return scope->kinds[i];
+    return 0;
+}
+
+static bool define(Scope *scope, Name name, int kind, Token token, Diagnostic *error) {
+    for (size_t i = 0; i < scope->count; ++i) {
+        if (same(scope->names[i], name)) {
+            snprintf(error->message, sizeof error->message,
+                     "duplicate declaration '%.*s'", (int)name.length, name.name);
+            error->line = token.line; error->column = token.column;
+            return false;
+        }
+    }
+    if (scope->count == scope->capacity) {
+        size_t capacity = scope->capacity ? scope->capacity * 2 : 8;
+        Name *names = realloc(scope->names, capacity * sizeof *names);
+        if (!names) return false;
+        scope->names = names;
+        int *kinds = realloc(scope->kinds, capacity * sizeof *kinds);
+        if (!kinds) return false;
+        scope->kinds = kinds;
+        scope->capacity = capacity;
+    }
+    scope->names[scope->count] = name;
+    scope->kinds[scope->count++] = kind;
+    return true;
+}
+
+static bool sem(Node *node, Scope *scope, bool in_function,
+                unsigned loop_depth, Diagnostic *error);
+
+static bool semblock(Node *node, Scope *parent, bool in_function,
+                     unsigned loop_depth, Diagnostic *error) {
+    Scope local = {.parent = parent};
+    for (size_t i = 0; i < node->as.list.count; ++i) {
+        Node *item = node->as.list.items[i];
+        if (item->kind == N_FUNCTION &&
+            !define(&local, item->as.function.name, 2, item->token, error))
+            goto failure;
+    }
+    for (size_t i = 0; i < node->as.list.count; ++i)
+        if (!sem(node->as.list.items[i], &local, in_function, loop_depth, error))
+            goto failure;
+    free(local.names); free(local.kinds);
+    return true;
+failure:
+    free(local.names); free(local.kinds);
+    return false;
+}
+
+static bool sem(Node *node, Scope *scope, bool in_function,
+                unsigned loop_depth, Diagnostic *error) {
+    if (!node) return true;
+    switch (node->kind) {
+        case N_PROGRAM:
+        case N_BLOCK:
+            return semblock(node, scope, in_function, loop_depth, error);
+        case N_VAR:
+            return sem(node->as.var.value, scope, in_function, loop_depth, error) &&
+                   define(scope, node->as.var.name, 1, node->token, error);
+        case N_IDENT:
+            if (!lookup(scope, node->as.name)) {
+                snprintf(error->message, sizeof error->message,
+                         "undefined identifier '%.*s'",
+                         (int)node->as.name.length, node->as.name.name);
+                error->line = node->token.line; error->column = node->token.column;
+                return false;
+            }
+            return true;
+        case N_FUNCTION: {
+            Scope local = {.parent = scope};
+            for (size_t i = 0; i < node->as.function.param_count; ++i) {
+                if (!define(&local, node->as.function.params[i], 1, node->token, error)) {
+                    free(local.names); free(local.kinds); return false;
+                }
+            }
+            /* A function declared inside a loop cannot break out of its enclosing function's loop. */
+            bool ok = semblock(node->as.function.body, &local, true, 0, error);
+            free(local.names); free(local.kinds);
+            return ok;
+        }
+        case N_IF:
+            return sem(node->as.conditional.condition, scope, in_function, loop_depth, error) &&
+                   sem(node->as.conditional.then_branch, scope, in_function, loop_depth, error) &&
+                   sem(node->as.conditional.else_branch, scope, in_function, loop_depth, error);
+        case N_WHILE:
+            return sem(node->as.loop.condition, scope, in_function, loop_depth, error) &&
+                   sem(node->as.loop.body, scope, in_function, loop_depth + 1, error);
+        case N_BREAK:
+        case N_CONTINUE:
+            if (loop_depth == 0) {
+                snprintf(error->message, sizeof error->message, "%s outside loop",
+                         node->kind == N_BREAK ? "break" : "continue");
+                error->line = node->token.line; error->column = node->token.column;
+                return false;
+            }
+            return true;
+        case N_RETURN:
+            if (!in_function) {
+                snprintf(error->message, sizeof error->message, "return outside function");
+                error->line = node->token.line; error->column = node->token.column;
+                return false;
+            }
+            return sem(node->as.ret.value, scope, in_function, loop_depth, error);
+        case N_CALL:
+            if (!((node->as.call.name.length == 9 &&
+                   !memcmp(node->as.call.name.name, "new_array", 9)) ||
+                  (node->as.call.name.length == 5 &&
+                   !memcmp(node->as.call.name.name, "print", 5))) &&
+                lookup(scope, node->as.call.name) != 2) {
+                snprintf(error->message, sizeof error->message,
+                         "unknown function '%.*s'", (int)node->as.call.name.length,
+                         node->as.call.name.name);
+                error->line = node->token.line; error->column = node->token.column;
+                return false;
+            }
+            for (size_t i = 0; i < node->as.call.arg_count; ++i)
+                if (!sem(node->as.call.args[i], scope, in_function, loop_depth, error))
+                    return false;
+            return true;
+        case N_UNARY:
+            return sem(node->as.unary.operand, scope, in_function, loop_depth, error);
+        case N_BINARY:
+            return sem(node->as.binary.left, scope, in_function, loop_depth, error) &&
+                   sem(node->as.binary.right, scope, in_function, loop_depth, error);
+        case N_INDEX:
+            return sem(node->as.index.target, scope, in_function, loop_depth, error) &&
+                   sem(node->as.index.index, scope, in_function, loop_depth, error);
+        case N_ASSIGN:
+            if (node->as.assign.target->kind != N_IDENT &&
+                node->as.assign.target->kind != N_INDEX) {
+                snprintf(error->message, sizeof error->message, "invalid assignment target");
+                error->line = node->token.line; error->column = node->token.column;
+                return false;
+            }
+            if (node->as.assign.target->kind == N_IDENT &&
+                lookup(scope, node->as.assign.target->as.name) != 1) {
+                snprintf(error->message, sizeof error->message, "assignment to undefined variable");
+                error->line = node->token.line; error->column = node->token.column;
+                return false;
+            }
+            return sem(node->as.assign.target, scope, in_function, loop_depth, error) &&
+                   sem(node->as.assign.value, scope, in_function, loop_depth, error);
+        default:
+            return true;
+    }
+}
+
+bool analyze_ast(const Ast *ast, Diagnostic *error) {
+    if (!ast || !ast->root || !error) return false;
+    memset(error, 0, sizeof *error);
+    Scope globals = {0};
+    bool ok = sem(ast->root, &globals, false, 0, error);
+    free(globals.names); free(globals.kinds);
+    return ok;
+}
