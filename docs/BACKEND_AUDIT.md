@@ -22,10 +22,11 @@
 - Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
 - Unary minus and `not`.
 - `print(value)` with exactly one argument.
-- `if condition then ... else ... stop` with block scopes.
+- `if condition then ... else ... stop` and `while condition do ... stop` with block scopes.
 - Function declarations, positional arguments, local `let`, calls and `return`.
 - Recursive and forward function calls.
 - Short-circuit `and` / `or`.
+- `while condition do ... stop` loops with nested-loop support.
 - `new_array()`, indexed array reads, indexed writes and array arguments passed by reference.
 
 ## Runtime architecture
@@ -55,7 +56,7 @@ discarded and the right operand is evaluated.
 - Maximum function arity and local slot index are constrained by 8-bit operands.
 - Maximum 255 user-defined functions in one chunk.
 - Global slots: 256.
-- Arrays, strings, loops, closures, modules and garbage collection are not implemented.
+- Strings, closures, modules and garbage collection are not implemented.
 - Runtime diagnostics do not yet map all failures to source lines.
 - Modulo still follows C `fmod` behavior for negative operands; language semantics remain to be specified.
 
@@ -66,6 +67,4 @@ discarded and the right operand is evaluated.
 - Recursive factorial.
 - Short-circuit `and` and `or`, using division by zero as a guard to prove the skipped operand is not evaluated.
 
-The next backend milestone can focus on arrays and indexed assignment, which are
-already represented in the frontend AST and are used by the golden-master
-program.
+Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Global declarations scoped inside a loop emit `OP_CLEAR_GLOBAL` at the end of each iteration, allowing their slots to be defined again on the next pass. Function-local declarations are removed from the operand stack at the end of each iteration.
