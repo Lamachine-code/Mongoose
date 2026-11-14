@@ -1,0 +1,8 @@
+function replace_first(items, value)
+    items[0] = value
+stop
+
+let values = new_array()
+values[0] = 10
+replace_first(values, 99)
+print(values[0])
