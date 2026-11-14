@@ -23,6 +23,7 @@ The current executable subset supports:
 - Numeric and boolean values.
 - Arithmetic, comparisons, unary minus and `not`.
 - Conditional `if/else/stop` blocks.
+- `while condition do ... stop` loops, including nested loops and loops inside functions.
 - Builtin `print(value)`.
 - User-defined functions, positional parameters, local variables, calls,
   return values and recursion.
