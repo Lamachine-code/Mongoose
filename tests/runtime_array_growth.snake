@@ -1,0 +1,3 @@
+let values = new_array()
+values[3] = 7
+print(values[3])
