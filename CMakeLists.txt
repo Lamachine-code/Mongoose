@@ -96,3 +96,17 @@ add_test(NAME runtime_executes_nested_while_loops COMMAND mongoose ${CMAKE_CURRE
 set_tests_properties(runtime_executes_nested_while_loops PROPERTIES PASS_REGULAR_EXPRESSION "6")
 add_test(NAME runtime_skips_false_while_body COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_while_false.snake)
 set_tests_properties(runtime_skips_false_while_body PROPERTIES PASS_REGULAR_EXPRESSION "0")
+
+
+add_test(NAME runtime_break_exits_innermost_loop COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_break.snake)
+set_tests_properties(runtime_break_exits_innermost_loop PROPERTIES PASS_REGULAR_EXPRESSION "10")
+add_test(NAME runtime_continue_starts_next_iteration COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_continue.snake)
+set_tests_properties(runtime_continue_starts_next_iteration PROPERTIES PASS_REGULAR_EXPRESSION "9")
+add_test(NAME runtime_break_targets_innermost_nested_loop COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_nested_break.snake)
+set_tests_properties(runtime_break_targets_innermost_nested_loop PROPERTIES PASS_REGULAR_EXPRESSION "6")
+add_test(NAME runtime_break_cleans_function_locals COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_break_function_scope.snake)
+set_tests_properties(runtime_break_cleans_function_locals PROPERTIES PASS_REGULAR_EXPRESSION "3")
+add_test(NAME semantic_rejects_break_outside_loop COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/break_outside_loop.snake)
+set_tests_properties(semantic_rejects_break_outside_loop PROPERTIES WILL_FAIL TRUE)
+add_test(NAME semantic_rejects_continue_outside_loop COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/continue_outside_loop.snake)
+set_tests_properties(semantic_rejects_continue_outside_loop PROPERTIES WILL_FAIL TRUE)
