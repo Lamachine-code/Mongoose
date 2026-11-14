@@ -50,8 +50,7 @@ Output:
 120
 ```
 
-Arrays, indexed assignment, loops, strings, closures, modules and garbage
-collection are not executable yet. The frontend checker is retained separately
+Strings, closures, modules and garbage collection are not executable yet. The frontend checker is retained separately
 as `mongoose_check`, so the broader parser and semantic regression suite can
 continue to validate syntax that the runtime compiler has not implemented.
 
