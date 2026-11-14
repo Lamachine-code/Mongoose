@@ -93,7 +93,10 @@ static bool leave_scope(Compiler *c, Token t) {
             --c->local_count;
         }
     } else {
-        for(size_t i=mark;i<c->global_count;i++)c->globals[i].active=false;
+        for(size_t i=mark;i<c->global_count;i++) {
+            if(c->globals[i].active && !emit_slot(c,OP_CLEAR_GLOBAL,c->globals[i].slot,t))return false;
+            c->globals[i].active=false;
+        }
     }
     return true;
 }
@@ -106,6 +109,13 @@ static bool patch_jump(Compiler*c,size_t at,Token t) {
     size_t d=c->chunk->count-(at+2);
     if(d>UINT16_MAX)return fail(c,t,"branch exceeds 65535 bytes");
     c->chunk->code[at]=(uint8_t)d;c->chunk->code[at+1]=(uint8_t)(d>>8);return true;
+}
+static bool emit_loop(Compiler*c,size_t target,Token t) {
+    if(!emit(c,OP_LOOP,t))return false;
+    size_t distance=c->chunk->count+2-target;
+    if(distance>UINT16_MAX)return fail(c,t,"loop body exceeds 65535 bytes");
+    return emit_byte(c,(uint8_t)(distance&0xffu),t)&&
+           emit_byte(c,(uint8_t)(distance>>8),t);
 }
 static bool expression(Compiler*c,Node*n);
 static bool binary(Compiler*c,Node*n) {
@@ -208,6 +218,15 @@ static bool statement(Compiler*c,Node*n) {
                !patch_jump(c,otherwise,n->token))return false;
             if(n->as.conditional.else_branch&&!statement(c,n->as.conditional.else_branch))return false;
             return patch_jump(c,end,n->token);
+        }
+        case N_WHILE: {
+            size_t start=c->chunk->count, exit;
+            if(!expression(c,n->as.loop.condition) ||
+               !emit_jump(c,OP_JUMP_IF_FALSE,n->token,&exit) ||
+               !statement(c,n->as.loop.body) ||
+               !emit_loop(c,start,n->token) ||
+               !patch_jump(c,exit,n->token))return false;
+            return true;
         }
         case N_RETURN:
             if(!c->in_function)return fail(c,n->token,"return outside function");
