@@ -11,7 +11,7 @@ source syntax; bytecode generation and execution are separate backend work.
 - Numeric literals are decimal integers or decimal fractions.
 - `true` and `false` are boolean literals.
 - Newlines separate statements.
-- Keywords are `let`, `function`, `if`, `then`, `else`, `stop`,
+- Keywords are `let`, `function`, `if`, `then`, `else`, `stop`, `while`, `do`,
   `return`, `and`, `or` and `not`.
 - `#` starts a line comment.
 - `//` starts a line comment when it is the first non-whitespace text on a
