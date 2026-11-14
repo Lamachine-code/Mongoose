@@ -18,9 +18,11 @@ typedef struct {
 typedef struct {
  Value stack[VM_STACK_MAX]; size_t stack_count;
  Value globals[VM_GLOBAL_MAX]; bool global_defined[VM_GLOBAL_MAX];
- Value result;\n Array **arrays; size_t array_count, array_capacity;
+ Value result;
+ Array **arrays; size_t array_count, array_capacity;
  CallFrame frames[VM_FRAMES_MAX]; size_t frame_count;
 } VM;
-void vm_init(VM *vm);\nvoid vm_free(VM *vm);
+void vm_init(VM *vm);
+void vm_free(VM *vm);
 VMResult vm_run(VM *vm, const Chunk *chunk);
 #endif
