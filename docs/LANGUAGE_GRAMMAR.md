@@ -12,7 +12,7 @@ source syntax; bytecode generation and execution are separate backend work.
 - `true` and `false` are boolean literals.
 - Newlines separate statements.
 - Keywords are `let`, `function`, `if`, `then`, `else`, `stop`, `while`, `do`,
-  `return`, `and`, `or` and `not`.
+  `for`, `to`, `return`, `and`, `or` and `not`.
 - `#` starts a line comment.
 - `//` starts a line comment when it is the first non-whitespace text on a
   line; otherwise it is the floor-division operator. This preserves the
@@ -29,8 +29,9 @@ functionDecl   = "function", IDENTIFIER, "(", [ parameters ], ")",
                  separators, block, "stop" ;
 parameters     = IDENTIFIER, { ",", IDENTIFIER } ;
 
-statement      = ifStmt | whileStmt | breakStmt | continueStmt | returnStmt | assignmentOrExpression ;
+statement      = ifStmt | whileStmt | forStmt | breakStmt | continueStmt | returnStmt | assignmentOrExpression ;
 whileStmt      = "while", expression, "do", separators, block, "stop" ;
+forStmt        = "for", IDENTIFIER, "=", expression, "to", expression, "do", separators, block, "stop" ;
 ifStmt         = "if", expression, "then", separators, block,
                  [ "else", separators, block ], "stop" ;
 returnStmt     = "return", expression ;
@@ -68,7 +69,8 @@ separators     = { NEWLINE } ;
 - Calls must resolve to a function (except recognized builtins) and use the
   expected number of arguments.
 - `return` is valid only inside a function.
-- `break` and `continue` are valid only inside a `while` loop; they target the innermost loop.
+- `break` and `continue` are valid only inside `while` or `for` loops; they target the innermost loop.
+- `for` uses an inclusive upper bound; start and end expressions are evaluated once, and its variable is scoped to the loop.
 - This baseline has no static type system; it does not infer or enforce
   numeric/boolean/array types.
 
