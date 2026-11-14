@@ -1,4 +1,5 @@
-#include "value.h"\n#include <stdlib.h>
+#include "value.h"
+#include <stdlib.h>
 
 Value value_nil(void) {
     Value value = {.type = VALUE_NIL};
@@ -35,6 +36,7 @@ void value_print(FILE *stream, Value value) {
     switch (value.type) {
         case VALUE_NIL: fputs("nil", stream); break;
         case VALUE_BOOL: fputs(value.as.boolean ? "true" : "false", stream); break;
-        case VALUE_NUMBER: fprintf(stream, "%.15g", value.as.number); break;\n        case VALUE_ARRAY: fputs("<array>", stream); break;
+        case VALUE_NUMBER: fprintf(stream, "%.15g", value.as.number); break;
+        case VALUE_ARRAY: fputs("<array>", stream); break;
     }
 }
