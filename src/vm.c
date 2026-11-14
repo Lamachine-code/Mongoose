@@ -1,8 +1,55 @@
 #include "vm.h"
 #include <math.h>
+#include <stdlib.h>
 
 void vm_init(VM *vm) {
     if (vm) *vm = (VM){0};
+}
+
+void vm_free(VM *vm) {
+    if (!vm) return;
+    for (size_t i = 0; i < vm->array_count; ++i)
+        value_array_free(vm->arrays[i]);
+    free(vm->arrays);
+    *vm = (VM){0};
+}
+
+static bool register_array(VM *vm, Array *array) {
+    if (vm->array_count == vm->array_capacity) {
+        size_t capacity = vm->array_capacity < 8 ? 8 : vm->array_capacity * 2;
+        Array **arrays = realloc(vm->arrays, capacity * sizeof *arrays);
+        if (!arrays) return false;
+        vm->arrays = arrays;
+        vm->array_capacity = capacity;
+    }
+    vm->arrays[vm->array_count++] = array;
+    return true;
+}
+
+static bool array_index(Value value, size_t *index) {
+    if (value.type != VALUE_NUMBER || !isfinite(value.as.number) ||
+        value.as.number < 0.0 || value.as.number > 65535.0 ||
+        floor(value.as.number) != value.as.number)
+        return false;
+    *index = (size_t)value.as.number;
+    return true;
+}
+
+static bool array_set(Array *array, size_t index, Value value) {
+    if (index >= 65536) return false;
+    if (index >= array->capacity) {
+        size_t capacity = array->capacity < 8 ? 8 : array->capacity;
+        while (capacity <= index) capacity *= 2;
+        if (capacity > 65536) capacity = 65536;
+        Value *items = realloc(array->items, capacity * sizeof *items);
+        if (!items) return false;
+        array->items = items;
+        array->capacity = capacity;
+    }
+    while (array->count <= index)
+        array->items[array->count++] = value_nil();
+    array->items[index] = value;
+    return true;
 }
 
 static bool push(VM *vm, Value value) {
@@ -111,7 +158,9 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                          (a.type == VALUE_BOOL &&
                           a.as.boolean == b.as.boolean) ||
                          (a.type == VALUE_NUMBER &&
-                          a.as.number == b.as.number));
+                          a.as.number == b.as.number) ||
+                         (a.type == VALUE_ARRAY &&
+                          a.as.array == b.as.array));
                     if (!push(vm, value_bool(equal)))
                         return VM_STACK_OVERFLOW;
                 } else {
@@ -197,6 +246,41 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                     if (vm->stack_count == 0) return VM_STACK_UNDERFLOW;
                     vm->stack[absolute] = vm->stack[vm->stack_count - 1];
                 }
+                break;
+            }
+            case OP_NEW_ARRAY: {
+                Array *array = calloc(1, sizeof *array);
+                if (!array) return VM_OUT_OF_MEMORY;
+                if (!register_array(vm, array)) {
+                    value_array_free(array);
+                    return VM_OUT_OF_MEMORY;
+                }
+                if (!push(vm, value_array(array))) return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_GET_INDEX: {
+                if (!pop(vm, &b) || !pop(vm, &a))
+                    return VM_STACK_UNDERFLOW;
+                size_t index;
+                if (a.type != VALUE_ARRAY || !a.as.array)
+                    return VM_ARRAY_REQUIRED;
+                if (!array_index(b, &index) || index >= a.as.array->count)
+                    return VM_INDEX_ERROR;
+                if (!push(vm, a.as.array->items[index]))
+                    return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_SET_INDEX: {
+                Value value;
+                if (!pop(vm, &value) || !pop(vm, &b) || !pop(vm, &a))
+                    return VM_STACK_UNDERFLOW;
+                size_t index;
+                if (a.type != VALUE_ARRAY || !a.as.array)
+                    return VM_ARRAY_REQUIRED;
+                if (!array_index(b, &index)) return VM_INDEX_ERROR;
+                if (!array_set(a.as.array, index, value))
+                    return index >= 65536 ? VM_INDEX_ERROR : VM_OUT_OF_MEMORY;
+                if (!push(vm, value)) return VM_STACK_OVERFLOW;
                 break;
             }
             case OP_CALL: {
