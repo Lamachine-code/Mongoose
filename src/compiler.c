@@ -282,8 +282,10 @@ static bool statement(Compiler*c,Node*n) {
             if(ok)ok=emit(c,OP_ADD,n->token);
             if(ok)ok=c->in_function?emit_slot(c,OP_SET_LOCAL,var_slot,n->token):emit_slot(c,OP_SET_GLOBAL,var_slot,n->token);
             if(ok)ok=emit(c,OP_POP,n->token)&&emit_loop(c,loop->start,n->token)&&patch_jump(c,exit,n->token);
-            for(size_t i=0;ok&&i<loop->break_count;i++)ok=patch_jump(c,loop->break_jumps[i],n->token);
-            --c->loop_depth;bool cleaned=leave_scope(c,n->token);return ok&&cleaned;
+            --c->loop_depth;
+            bool cleaned=leave_scope(c,n->token);
+            for(size_t i=0;ok&&cleaned&&i<loop->break_count;i++)ok=patch_jump(c,loop->break_jumps[i],n->token);
+            return ok&&cleaned;
         }
         case N_BREAK: {
             if (!c->loop_depth) return fail(c, n->token, "break outside loop");
