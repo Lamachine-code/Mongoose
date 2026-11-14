@@ -149,7 +149,16 @@ static bool expression(Compiler*c,Node*n) {
             if(n->as.unary.op.type==T_NOT)return emit(c,OP_NOT,n->token);
             return fail(c,n->token,"unsupported unary operator");
         case N_BINARY:return binary(c,n);
+        case N_INDEX:
+            return expression(c,n->as.index.target) &&
+                   expression(c,n->as.index.index) &&
+                   emit(c,OP_GET_INDEX,n->token);
         case N_CALL: {
+            if(n->as.call.name.length==9&&!memcmp(n->as.call.name.name,"new_array",9)) {
+                if(n->as.call.arg_count!=0)
+                    return fail(c,n->token,"new_array() expects no arguments");
+                return emit(c,OP_NEW_ARRAY,n->token);
+            }
             if(n->as.call.name.length==5&&!memcmp(n->as.call.name.name,"print",5)) {
                 if(n->as.call.arg_count!=1)return fail(c,n->token,"print() expects one argument");
                 return expression(c,n->as.call.args[0])&&emit(c,OP_PRINT,n->token)&&emit(c,OP_NIL,n->token);
@@ -162,7 +171,12 @@ static bool expression(Compiler*c,Node*n) {
         }
         case N_ASSIGN: {
             Node*t=n->as.assign.target;
-            if(t->kind!=N_IDENT)return fail(c,n->token,"only variable assignment is supported");
+            if(t->kind==N_INDEX)
+                return expression(c,t->as.index.target) &&
+                       expression(c,t->as.index.index) &&
+                       expression(c,n->as.assign.value) &&
+                       emit(c,OP_SET_INDEX,n->token);
+            if(t->kind!=N_IDENT)return fail(c,n->token,"invalid assignment target");
             int slot=c->in_function?find_local(c,t->as.name):-1;
             if(slot>=0)return expression(c,n->as.assign.value)&&emit_slot(c,OP_SET_LOCAL,(uint8_t)slot,n->token);
             slot=find_global(c,t->as.name);
