@@ -1,0 +1,7 @@
+let index = 0
+let total = 0
+while index < 5 do
+    total = total + index
+    index = index + 1
+stop
+print(total)
