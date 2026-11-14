@@ -2,7 +2,8 @@
 
 ## Implemented
 
-- Tagged runtime values: nil, booleans and numbers.
+- Tagged runtime values: nil, booleans, numbers and array references.
+- VM-owned dynamic arrays with indexed reads/writes and reference semantics.
 - Bytecode chunks with source-line metadata, a constant pool and function metadata.
 - Stack-based VM with arithmetic, comparisons, global variables and conditional jumps.
 - AST-to-bytecode compilation and executable CLI pipeline.
@@ -25,6 +26,7 @@
 - Function declarations, positional arguments, local `let`, calls and `return`.
 - Recursive and forward function calls.
 - Short-circuit `and` / `or`.
+- `new_array()`, indexed array reads, indexed writes and array arguments passed by reference.
 
 ## Runtime architecture
 
