@@ -106,6 +106,15 @@ static bool sem(Node *node, Scope *scope, bool in_function,
         case N_WHILE:
             return sem(node->as.loop.condition, scope, in_function, loop_depth, error) &&
                    sem(node->as.loop.body, scope, in_function, loop_depth + 1, error);
+        case N_FOR: {
+            if (!sem(node->as.for_loop.start, scope, in_function, loop_depth, error) ||
+                !sem(node->as.for_loop.end, scope, in_function, loop_depth, error)) return false;
+            Scope local = {.parent = scope};
+            bool ok = define(&local, node->as.for_loop.name, 1, node->token, error) &&
+                      sem(node->as.for_loop.body, &local, in_function, loop_depth + 1, error);
+            free(local.names); free(local.kinds);
+            return ok;
+        }
         case N_BREAK:
         case N_CONTINUE:
             if (loop_depth == 0) {
