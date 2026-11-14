@@ -1,0 +1,11 @@
+let outer = 0
+let total = 0
+while outer < 3 do
+    let inner = 0
+    while inner < 2 do
+        total = total + 1
+        inner = inner + 1
+    stop
+    outer = outer + 1
+stop
+print(total)

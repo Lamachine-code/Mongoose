@@ -1,0 +1,10 @@
+function sum_to(limit)
+    let index = 0
+    let total = 0
+    while index <= limit do
+        total = total + index
+        index = index + 1
+    stop
+    return total
+stop
+print(sum_to(5))

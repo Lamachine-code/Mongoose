@@ -1,0 +1,3 @@
+function target()
+stop
+target = 3

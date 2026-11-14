@@ -1,0 +1,5 @@
+let count = 0
+while false do
+    count = count + 1
+stop
+print(count)

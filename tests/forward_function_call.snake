@@ -1,0 +1,6 @@
+function caller()
+    return later()
+stop
+function later()
+    return 1
+stop

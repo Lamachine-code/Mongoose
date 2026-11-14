@@ -1,0 +1,3 @@
+let values = new_array()
+values[0] = 42
+print(values[0])

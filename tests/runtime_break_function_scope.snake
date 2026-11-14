@@ -1,0 +1,12 @@
+function stop_at_three(limit)
+    let index = 0
+    while index < limit do
+        let temporary = index
+        if index == 3 then
+            break
+        stop
+        index = index + 1
+    stop
+    return index
+stop
+print(stop_at_three(8))

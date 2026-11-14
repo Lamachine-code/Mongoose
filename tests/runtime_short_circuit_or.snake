@@ -1,0 +1,2 @@
+let result = true or (1 / 0 == 0)
+print(result)

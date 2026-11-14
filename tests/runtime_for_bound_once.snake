@@ -1,0 +1,9 @@
+let calls = 0
+function bound()
+    calls = calls + 1
+    return 3
+stop
+for i = 1 to bound() do
+    print(i)
+stop
+print(calls)

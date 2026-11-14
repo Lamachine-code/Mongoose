@@ -1,0 +1,10 @@
+let index = 0
+let total = 0
+while index < 6 do
+    index = index + 1
+    if index % 2 == 0 then
+        continue
+    stop
+    total = total + index
+stop
+print(total)

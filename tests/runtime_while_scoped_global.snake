@@ -1,0 +1,6 @@
+let index = 0
+while index < 3 do
+    let temporary = index * 2
+    print(temporary)
+    index = index + 1
+stop
