@@ -177,6 +177,13 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                         return VM_STACK_OVERFLOW;
                 }
                 break;
+            case OP_CLEAR_GLOBAL: {
+                if (ip >= chunk->count) return VM_INVALID_BYTECODE;
+                uint8_t slot = chunk->code[ip++];
+                vm->global_defined[slot] = false;
+                vm->globals[slot] = value_nil();
+                break;
+            }
             case OP_DEFINE_GLOBAL:
             case OP_GET_GLOBAL:
             case OP_SET_GLOBAL: {
@@ -202,6 +209,7 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 break;
             }
             case OP_JUMP:
+            case OP_LOOP:
             case OP_JUMP_IF_FALSE:
             case OP_JUMP_IF_TRUE:
             case OP_JUMP_IF_FALSE_KEEP:
@@ -210,7 +218,7 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 uint16_t offset = (uint16_t)chunk->code[ip] |
                     (uint16_t)((uint16_t)chunk->code[ip + 1] << 8);
                 ip += 2;
-                bool conditional = instruction != OP_JUMP;
+                bool conditional = instruction != OP_JUMP && instruction != OP_LOOP;
                 bool keep = instruction == OP_JUMP_IF_FALSE_KEEP ||
                             instruction == OP_JUMP_IF_TRUE_KEEP;
                 bool truthy = vm->stack_count
@@ -223,8 +231,13 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (conditional && !keep && !pop(vm, &a))
                     return VM_STACK_UNDERFLOW;
                 if (should_jump) {
-                    if (offset > chunk->count - ip) return VM_INVALID_BYTECODE;
-                    ip += offset;
+                    if (instruction == OP_LOOP) {
+                        if (offset > ip) return VM_INVALID_BYTECODE;
+                        ip -= offset;
+                    } else {
+                        if (offset > chunk->count - ip) return VM_INVALID_BYTECODE;
+                        ip += offset;
+                    }
                 }
                 break;
             }
