@@ -29,11 +29,13 @@ functionDecl   = "function", IDENTIFIER, "(", [ parameters ], ")",
                  separators, block, "stop" ;
 parameters     = IDENTIFIER, { ",", IDENTIFIER } ;
 
-statement      = ifStmt | whileStmt | returnStmt | assignmentOrExpression ;
+statement      = ifStmt | whileStmt | breakStmt | continueStmt | returnStmt | assignmentOrExpression ;
 whileStmt      = "while", expression, "do", separators, block, "stop" ;
 ifStmt         = "if", expression, "then", separators, block,
                  [ "else", separators, block ], "stop" ;
 returnStmt     = "return", expression ;
+breakStmt      = "break" ;
+continueStmt   = "continue" ;
 block          = { declaration | statement, separators } ;
 assignmentOrExpression = expression ;
 
@@ -66,6 +68,7 @@ separators     = { NEWLINE } ;
 - Calls must resolve to a function (except recognized builtins) and use the
   expected number of arguments.
 - `return` is valid only inside a function.
+- `break` and `continue` are valid only inside a `while` loop; they target the innermost loop.
 - This baseline has no static type system; it does not infer or enforce
   numeric/boolean/array types.
 
