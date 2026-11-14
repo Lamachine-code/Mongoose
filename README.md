@@ -27,6 +27,7 @@ The current executable subset supports:
 - User-defined functions, positional parameters, local variables, calls,
   return values and recursion.
 - Short-circuit `and` and `or`.
+- Dynamic arrays created with `new_array()`, indexed reads and writes, automatic growth with nil-filled gaps, and reference semantics when passed to functions.
 
 Example:
 
