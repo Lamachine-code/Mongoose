@@ -12,10 +12,10 @@ typedef struct { Name name; uint8_t slot; size_t depth; } Local;
 typedef struct { Name name; uint8_t index; uint8_t arity; } Function;
 typedef struct {
     size_t start;
-    size_t scope_depth;
-    size_t variable_count;
-    size_t break_jumps[256];
-    size_t break_count;
+    size_t break_variable_count, continue_variable_count;
+    size_t break_jumps[256], break_count;
+    size_t continue_jumps[256], continue_count;
+    bool continue_to_increment;
 } Loop;
 typedef struct {
     Chunk *chunk;
@@ -126,14 +126,13 @@ static bool emit_loop(Compiler*c,size_t target,Token t) {
     return emit_byte(c,(uint8_t)(distance&0xffu),t)&&
            emit_byte(c,(uint8_t)(distance>>8),t);
 }
-static bool emit_loop_cleanup(Compiler *c, Loop *loop, Token t) {
+static bool emit_loop_cleanup(Compiler *c, size_t variable_count, Token t) {
     if (c->in_function) {
-        for (size_t i = c->local_count; i > loop->variable_count; --i)
+        for (size_t i = c->local_count; i > variable_count; --i)
             if (!emit(c, OP_POP, t)) return false;
     } else {
-        for (size_t i = loop->variable_count; i < c->global_count; ++i)
-            if (c->globals[i].active &&
-                !emit_slot(c, OP_CLEAR_GLOBAL, c->globals[i].slot, t)) return false;
+        for (size_t i = variable_count; i < c->global_count; ++i)
+            if (c->globals[i].active && !emit_slot(c, OP_CLEAR_GLOBAL, c->globals[i].slot, t)) return false;
     }
     return true;
 }
@@ -245,8 +244,8 @@ static bool statement(Compiler*c,Node*n) {
             Loop *loop = &c->loops[c->loop_depth++];
             memset(loop, 0, sizeof *loop);
             loop->start = c->chunk->count;
-            loop->scope_depth = c->scope_depth;
-            loop->variable_count = c->in_function ? c->local_count : c->global_count;
+            loop->break_variable_count = c->in_function ? c->local_count : c->global_count;
+            loop->continue_variable_count = loop->break_variable_count;
             size_t exit;
             bool ok = expression(c, n->as.loop.condition) &&
                       emit_jump(c, OP_JUMP_IF_FALSE, n->token, &exit) &&
@@ -258,20 +257,50 @@ static bool statement(Compiler*c,Node*n) {
             --c->loop_depth;
             return ok;
         }
+        case N_FOR: {
+            if(c->loop_depth==COMPILER_SCOPE_MAX)return fail(c,n->token,"loop nesting limit exceeded");
+            if(!enter_scope(c,n->token))return false;
+            Loop *loop=&c->loops[c->loop_depth++];memset(loop,0,sizeof *loop);
+            loop->break_variable_count=c->in_function?c->local_count:c->global_count;
+            static const char hidden_name[]="\001for_end";
+            Name hidden={hidden_name,sizeof hidden_name-1};
+            uint8_t var_slot=0,end_slot=0;
+            bool ok=expression(c,n->as.for_loop.start);
+            if(ok&&c->in_function)ok=add_local(c,n->as.for_loop.name,n->token,&var_slot);
+            else if(ok)ok=add_global(c,n->as.for_loop.name,n->token,&var_slot)&&emit_slot(c,OP_DEFINE_GLOBAL,var_slot,n->token);
+            if(ok)ok=expression(c,n->as.for_loop.end);
+            if(ok&&c->in_function)ok=add_local(c,hidden,n->token,&end_slot);
+            else if(ok)ok=add_global(c,hidden,n->token,&end_slot)&&emit_slot(c,OP_DEFINE_GLOBAL,end_slot,n->token);
+            loop->continue_variable_count=c->in_function?c->local_count:c->global_count;
+            loop->continue_to_increment=true;loop->start=c->chunk->count;
+            size_t exit=0;
+            if(ok)ok=c->in_function?emit_slot(c,OP_GET_LOCAL,var_slot,n->token)&&emit_slot(c,OP_GET_LOCAL,end_slot,n->token):emit_slot(c,OP_GET_GLOBAL,var_slot,n->token)&&emit_slot(c,OP_GET_GLOBAL,end_slot,n->token);
+            if(ok)ok=emit(c,OP_LESS_EQUAL,n->token)&&emit_jump(c,OP_JUMP_IF_FALSE,n->token,&exit)&&statement(c,n->as.for_loop.body);
+            for(size_t i=0;ok&&i<loop->continue_count;i++)ok=patch_jump(c,loop->continue_jumps[i],n->token);
+            if(ok)ok=c->in_function?emit_slot(c,OP_GET_LOCAL,var_slot,n->token):emit_slot(c,OP_GET_GLOBAL,var_slot,n->token);
+            if(ok)ok=chunk_write_constant(c->chunk,value_number(1),n->token.line)||fail(c,n->token,"cannot add for-loop increment constant");
+            if(ok)ok=emit(c,OP_ADD,n->token);
+            if(ok)ok=c->in_function?emit_slot(c,OP_SET_LOCAL,var_slot,n->token):emit_slot(c,OP_SET_GLOBAL,var_slot,n->token);
+            if(ok)ok=emit(c,OP_POP,n->token)&&emit_loop(c,loop->start,n->token)&&patch_jump(c,exit,n->token);
+            for(size_t i=0;ok&&i<loop->break_count;i++)ok=patch_jump(c,loop->break_jumps[i],n->token);
+            --c->loop_depth;bool cleaned=leave_scope(c,n->token);return ok&&cleaned;
+        }
         case N_BREAK: {
             if (!c->loop_depth) return fail(c, n->token, "break outside loop");
             Loop *loop = &c->loops[c->loop_depth - 1];
             if (loop->break_count == sizeof loop->break_jumps / sizeof loop->break_jumps[0])
                 return fail(c, n->token, "too many break statements in loop");
-            if (!emit_loop_cleanup(c, loop, n->token)) return false;
+            if (!emit_loop_cleanup(c, loop->break_variable_count, n->token)) return false;
             return emit_jump(c, OP_JUMP, n->token,
                              &loop->break_jumps[loop->break_count++]);
         }
         case N_CONTINUE: {
-            if (!c->loop_depth) return fail(c, n->token, "continue outside loop");
-            Loop *loop = &c->loops[c->loop_depth - 1];
-            return emit_loop_cleanup(c, loop, n->token) &&
-                   emit_loop(c, loop->start, n->token);
+            if (!c->loop_depth) return fail(c,n->token,"continue outside loop");
+            Loop *loop=&c->loops[c->loop_depth-1];
+            if (!emit_loop_cleanup(c,loop->continue_variable_count,n->token)) return false;
+            if (!loop->continue_to_increment) return emit_loop(c,loop->start,n->token);
+            if (loop->continue_count==256) return fail(c,n->token,"too many continue statements in loop");
+            return emit_jump(c,OP_JUMP,n->token,&loop->continue_jumps[loop->continue_count++]);
         }
         case N_RETURN:
             if(!c->in_function)return fail(c,n->token,"return outside function");
