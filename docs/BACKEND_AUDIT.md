@@ -13,6 +13,7 @@
 - Local variable load/store instructions.
 - Short-circuit evaluation for `and` and `or`.
 - `break` and `continue` with nested-loop targeting and runtime scope cleanup.
+- Inclusive `for` loops with one-time evaluated bounds and scoped iteration variables.
 - Frontend-only checker retained as `mongoose_check`.
 
 ## Executable source subset
@@ -70,7 +71,11 @@ discarded and the right operand is evaluated.
 - Recursive factorial.
 - Short-circuit `and` and `or`, using division by zero as a guard to prove the skipped operand is not evaluated.
 - `break` and `continue`, nested-loop targeting, local cleanup on loop exit, and semantic rejection outside loops.
+- Inclusive `for` loops, one-time bound evaluation, loop-variable scope, and `continue` increment behavior.
 
 Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Each compiler loop context records its condition target, lexical scope depth, variable-slot boundary and pending `break` jumps. A `break` emits a forward jump patched to the end of the innermost loop; a `continue` emits a backward jump to that loop's condition.
 
 Before either jump, the compiler emits cleanup for variables introduced since the loop began. Scoped globals are reset with `OP_CLEAR_GLOBAL`; function locals are popped from the operand stack. The compiler's static scope bookkeeping is intentionally left unchanged while emitting this alternate control-flow path, so the ordinary fall-through path can still be generated correctly.
+
+
+A `for` loop creates a lexical scope containing its iteration variable and a hidden upper-bound slot. Both range expressions are evaluated once. The condition uses an inclusive comparison. `continue` jumps to the increment sequence; `break` exits and cleans up the entire loop scope.
