@@ -11,6 +11,13 @@ typedef struct { Name name; uint8_t slot; bool active; } Global;
 typedef struct { Name name; uint8_t slot; size_t depth; } Local;
 typedef struct { Name name; uint8_t index; uint8_t arity; } Function;
 typedef struct {
+    size_t start;
+    size_t scope_depth;
+    size_t variable_count;
+    size_t break_jumps[256];
+    size_t break_count;
+} Loop;
+typedef struct {
     Chunk *chunk;
     Diagnostic *error;
     Global globals[COMPILER_GLOBAL_MAX];
@@ -22,6 +29,8 @@ typedef struct {
     Function functions[COMPILER_FUNCTION_MAX];
     size_t function_count;
     bool in_function;
+    Loop loops[COMPILER_SCOPE_MAX];
+    size_t loop_depth;
 } Compiler;
 
 static bool same_name(Name a, Name b) {
@@ -116,6 +125,17 @@ static bool emit_loop(Compiler*c,size_t target,Token t) {
     if(distance>UINT16_MAX)return fail(c,t,"loop body exceeds 65535 bytes");
     return emit_byte(c,(uint8_t)(distance&0xffu),t)&&
            emit_byte(c,(uint8_t)(distance>>8),t);
+}
+static bool emit_loop_cleanup(Compiler *c, Loop *loop, Token t) {
+    if (c->in_function) {
+        for (size_t i = c->local_count; i > loop->variable_count; --i)
+            if (!emit(c, OP_POP, t)) return false;
+    } else {
+        for (size_t i = loop->variable_count; i < c->global_count; ++i)
+            if (c->globals[i].active &&
+                !emit_slot(c, OP_CLEAR_GLOBAL, c->globals[i].slot, t)) return false;
+    }
+    return true;
 }
 static bool expression(Compiler*c,Node*n);
 static bool binary(Compiler*c,Node*n) {
@@ -220,13 +240,38 @@ static bool statement(Compiler*c,Node*n) {
             return patch_jump(c,end,n->token);
         }
         case N_WHILE: {
-            size_t start=c->chunk->count, exit;
-            if(!expression(c,n->as.loop.condition) ||
-               !emit_jump(c,OP_JUMP_IF_FALSE,n->token,&exit) ||
-               !statement(c,n->as.loop.body) ||
-               !emit_loop(c,start,n->token) ||
-               !patch_jump(c,exit,n->token))return false;
-            return true;
+            if (c->loop_depth == COMPILER_SCOPE_MAX)
+                return fail(c, n->token, "loop nesting limit exceeded");
+            Loop *loop = &c->loops[c->loop_depth++];
+            memset(loop, 0, sizeof *loop);
+            loop->start = c->chunk->count;
+            loop->scope_depth = c->scope_depth;
+            loop->variable_count = c->in_function ? c->local_count : c->global_count;
+            size_t exit;
+            bool ok = expression(c, n->as.loop.condition) &&
+                      emit_jump(c, OP_JUMP_IF_FALSE, n->token, &exit) &&
+                      statement(c, n->as.loop.body) &&
+                      emit_loop(c, loop->start, n->token) &&
+                      patch_jump(c, exit, n->token);
+            for (size_t i = 0; ok && i < loop->break_count; ++i)
+                ok = patch_jump(c, loop->break_jumps[i], n->token);
+            --c->loop_depth;
+            return ok;
+        }
+        case N_BREAK: {
+            if (!c->loop_depth) return fail(c, n->token, "break outside loop");
+            Loop *loop = &c->loops[c->loop_depth - 1];
+            if (loop->break_count == sizeof loop->break_jumps / sizeof loop->break_jumps[0])
+                return fail(c, n->token, "too many break statements in loop");
+            if (!emit_loop_cleanup(c, loop, n->token)) return false;
+            return emit_jump(c, OP_JUMP, n->token,
+                             &loop->break_jumps[loop->break_count++]);
+        }
+        case N_CONTINUE: {
+            if (!c->loop_depth) return fail(c, n->token, "continue outside loop");
+            Loop *loop = &c->loops[c->loop_depth - 1];
+            return emit_loop_cleanup(c, loop, n->token) &&
+                   emit_loop(c, loop->start, n->token);
         }
         case N_RETURN:
             if(!c->in_function)return fail(c,n->token,"return outside function");
