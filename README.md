@@ -25,6 +25,7 @@ The current executable subset supports:
 - Conditional `if/else/stop` blocks.
 - `while condition do ... stop` loops, including nested loops and loops inside functions.
 - `break` exits the innermost loop; `continue` starts its next iteration.
+- Inclusive `for variable = start to end do ... stop` loops.
 - Builtin `print(value)`.
 - User-defined functions, positional parameters, local variables, calls,
   return values and recursion.
