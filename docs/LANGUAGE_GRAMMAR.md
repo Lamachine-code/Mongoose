@@ -29,7 +29,8 @@ functionDecl   = "function", IDENTIFIER, "(", [ parameters ], ")",
                  separators, block, "stop" ;
 parameters     = IDENTIFIER, { ",", IDENTIFIER } ;
 
-statement      = ifStmt | returnStmt | assignmentOrExpression ;
+statement      = ifStmt | whileStmt | returnStmt | assignmentOrExpression ;
+whileStmt      = "while", expression, "do", separators, block, "stop" ;
 ifStmt         = "if", expression, "then", separators, block,
                  [ "else", separators, block ], "stop" ;
 returnStmt     = "return", expression ;
@@ -70,6 +71,6 @@ separators     = { NEWLINE } ;
 
 ## Open design boundary
 
-The language currently has no string literals, array literals, loops,
+The language currently has no string literals, array literals,
 classes, imports or user-defined types in its AST. These should not be added
 implicitly as part of the frontend stabilization work.
