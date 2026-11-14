@@ -5,7 +5,7 @@
 
 typedef enum {
  T_EOF, T_ERROR, T_NEWLINE, T_IDENT, T_NUMBER,
- T_LET, T_FUNCTION, T_IF, T_THEN, T_ELSE, T_STOP, T_TRUE, T_FALSE, T_RETURN,
+ T_LET, T_FUNCTION, T_IF, T_THEN, T_ELSE, T_STOP, T_WHILE, T_DO, T_TRUE, T_FALSE, T_RETURN,
  T_AND, T_OR, T_NOT,
  T_PLUS, T_MINUS, T_STAR, T_SLASH, T_FLOOR_DIV, T_PERCENT, T_POWER,
  T_ASSIGN, T_EQ, T_NE, T_LT, T_LE, T_GT, T_GE,
@@ -19,7 +19,7 @@ void free_tokens(TokenArray *tokens);
 
 typedef enum {
  N_NUMBER, N_BOOL, N_IDENT, N_UNARY, N_BINARY, N_VAR, N_BLOCK,
- N_IF, N_FUNCTION, N_CALL, N_INDEX, N_RETURN, N_ASSIGN, N_PROGRAM
+ N_IF, N_WHILE, N_FUNCTION, N_CALL, N_INDEX, N_RETURN, N_ASSIGN, N_PROGRAM
 } NodeKind;
 typedef struct Node Node;
 typedef struct { const char *name; size_t length; } Name;
@@ -33,6 +33,7 @@ struct Node {
   struct { Name name; Node *value; } var;
   struct { Node **items; size_t count, capacity; } list;
   struct { Node *condition, *then_branch, *else_branch; } conditional;
+  struct { Node *condition, *body; } loop;
   struct { Name name; Name *params; size_t param_count; Node *body; } function;
   struct { Name name; Node **args; size_t arg_count, arg_capacity; } call;
   struct { Node *target, *index; } index;
