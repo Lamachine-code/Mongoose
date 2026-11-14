@@ -27,6 +27,9 @@ static const char *vm_error(VMResult result) {
   case VM_UNDEFINED_GLOBAL:return "undefined global variable";
   case VM_CALL_OVERFLOW:return "maximum call depth exceeded";
   case VM_ARITY_ERROR:return "incorrect function argument count";
+  case VM_ARRAY_REQUIRED:return "indexed value is not an array";
+  case VM_INDEX_ERROR:return "invalid or out-of-range array index";
+  case VM_OUT_OF_MEMORY:return "out of memory";
   case VM_OK:return "success";
  }
  return "unknown runtime error";
@@ -47,6 +50,6 @@ int main(int argc,char **argv) {
   VMResult result=vm_run(&vm,&chunk);
   if(result!=VM_OK){fprintf(stderr,"%s: runtime error: %s\n",argv[1],vm_error(result));ok=false;}
  }
- chunk_free(&chunk); free_ast(&ast); free_tokens(&tokens); free(source);
+ vm_free(&vm); chunk_free(&chunk); free_ast(&ast); free_tokens(&tokens); free(source);
  return ok?0:1;
 }
