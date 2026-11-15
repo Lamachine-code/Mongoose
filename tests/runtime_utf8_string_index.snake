@@ -1,0 +1,3 @@
+let text = "Aé🙂Z"
+print(text[1])
+print(text[2])
