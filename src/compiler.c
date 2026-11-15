@@ -163,11 +163,14 @@ static bool compile_string(Compiler *c, Node *n) {
     String *string = string_new(decoded, length);
     free(decoded);
     if (!string) return fail(c, n->token, "out of memory creating string constant");
-    if (!chunk_write_constant(c->chunk, value_string(string), n->token.line)) {
+    uint16_t index;
+    if (!chunk_add_constant(c->chunk, value_string(string), &index)) {
         value_string_free(string);
         return fail(c, n->token, "cannot add string constant");
     }
-    return true;
+    return emit(c, OP_CONSTANT, n->token) &&
+           emit_byte(c, (uint8_t)(index & 0xffu), n->token) &&
+           emit_byte(c, (uint8_t)(index >> 8), n->token);
 }
 static bool binary(Compiler*c,Node*n) {
     TokenType type=n->as.binary.op.type;
