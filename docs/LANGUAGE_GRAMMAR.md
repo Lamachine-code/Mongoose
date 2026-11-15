@@ -11,6 +11,7 @@ source syntax; bytecode generation and execution are separate backend work.
 - Numeric literals are decimal integers or decimal fractions.
 - `true` and `false` are boolean literals; `nil` is the absence-of-value literal.
 - Double-quoted strings support `\\n`, `\\r`, `\\t`, `\\0`, `\\\\` and `\\"` escapes.
+- String indexing and substring offsets are zero-based byte offsets (not Unicode code-point indices).
 - Newlines separate statements.
 - Keywords are `let`, `function`, `if`, `then`, `else`, `stop`, `while`, `do`,
   `for`, `to`, `nil`, `return`, `and`, `or` and `not`.
@@ -73,6 +74,7 @@ separators     = { NEWLINE } ;
 - `break` and `continue` are valid only inside `while` or `for` loops; they target the innermost loop.
 - `for` uses an inclusive upper bound; start and end expressions are evaluated once, and its variable is scoped to the loop.
 - `nil` is distinct from `false`, `0` and the empty string; `==` and `!=` compare it by value type.
+- `length(string)` returns its byte length. `string[index]` returns a one-byte string. `substring(string, start, length)` returns the requested byte range; invalid indices and ranges are runtime errors.
 - This baseline has no static type system; it does not infer or enforce
   numeric/boolean/array types.
 
