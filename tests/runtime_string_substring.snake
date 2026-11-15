@@ -1,0 +1,3 @@
+let text = "Mongoose language"
+print(substring(text, 0, 8))
+print(substring(text, 9, 8))
