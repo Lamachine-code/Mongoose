@@ -18,6 +18,71 @@ void vm_free(VM *vm) {
     *vm = (VM){0};
 }
 
+
+/* Decode one UTF-8 scalar value. Reject overlong forms, surrogates and
+   values above U+10FFFF. */
+static bool utf8_next(const char *bytes, size_t length, size_t offset,
+                      size_t *width) {
+    if (offset >= length) return false;
+    unsigned char c = (unsigned char)bytes[offset];
+    if (c <= 0x7f) { *width = 1; return true; }
+    if (c >= 0xc2 && c <= 0xdf) {
+        if (length - offset < 2) return false;
+        unsigned char c1 = (unsigned char)bytes[offset + 1];
+        if ((c1 & 0xc0) != 0x80) return false;
+        *width = 2; return true;
+    }
+    if (c >= 0xe0 && c <= 0xef) {
+        if (length - offset < 3) return false;
+        unsigned char c1 = (unsigned char)bytes[offset + 1];
+        unsigned char c2 = (unsigned char)bytes[offset + 2];
+        if ((c1 & 0xc0) != 0x80 || (c2 & 0xc0) != 0x80 ||
+            (c == 0xe0 && c1 < 0xa0) || (c == 0xed && c1 >= 0xa0))
+            return false;
+        *width = 3; return true;
+    }
+    if (c >= 0xf0 && c <= 0xf4) {
+        if (length - offset < 4) return false;
+        unsigned char c1 = (unsigned char)bytes[offset + 1];
+        unsigned char c2 = (unsigned char)bytes[offset + 2];
+        unsigned char c3 = (unsigned char)bytes[offset + 3];
+        if ((c1 & 0xc0) != 0x80 || (c2 & 0xc0) != 0x80 ||
+            (c3 & 0xc0) != 0x80 || (c == 0xf0 && c1 < 0x90) ||
+            (c == 0xf4 && c1 >= 0x90))
+            return false;
+        *width = 4; return true;
+    }
+    return false;
+}
+
+static bool utf8_count(const String *string, size_t *count) {
+    size_t offset = 0, total = 0;
+    while (offset < string->length) {
+        size_t width;
+        if (!utf8_next(string->chars, string->length, offset, &width))
+            return false;
+        offset += width;
+        ++total;
+    }
+    *count = total;
+    return true;
+}
+
+static bool utf8_offset(const String *string, size_t character_index,
+                        size_t *byte_offset) {
+    size_t offset = 0, index = 0;
+    while (index < character_index && offset < string->length) {
+        size_t width;
+        if (!utf8_next(string->chars, string->length, offset, &width))
+            return false;
+        offset += width;
+        ++index;
+    }
+    if (index != character_index) return false;
+    *byte_offset = offset;
+    return true;
+}
+
 static bool register_array(VM *vm, Array *array) {
     if (vm->array_count == vm->array_capacity) {
         size_t capacity = vm->array_capacity < 8 ? 8 : vm->array_capacity * 2;
@@ -313,8 +378,15 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 size_t index;
                 if (a.type == VALUE_STRING && a.as.string) {
-                    if (!array_index(b, &index) || index >= a.as.string->length) return VM_INDEX_ERROR;
-                    String *character = string_new(a.as.string->chars + index, 1);
+                    size_t byte_offset, width, character_count;
+                    if (!array_index(b, &index)) return VM_INDEX_ERROR;
+                    if (!utf8_count(a.as.string, &character_count)) return VM_UTF8_ERROR;
+                    if (index >= character_count ||
+                        !utf8_offset(a.as.string, index, &byte_offset) ||
+                        !utf8_next(a.as.string->chars, a.as.string->length,
+                                   byte_offset, &width))
+                        return VM_INDEX_ERROR;
+                    String *character = string_new(a.as.string->chars + byte_offset, width);
                     if (!character) return VM_OUT_OF_MEMORY;
                     if (!register_string(vm, character)) { value_string_free(character); return VM_OUT_OF_MEMORY; }
                     if (!push(vm, value_string(character))) return VM_STACK_OVERFLOW;
@@ -328,18 +400,28 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
             case OP_STRING_LENGTH: {
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 if (a.type != VALUE_STRING || !a.as.string) return VM_TYPE_ERROR;
-                if (!push(vm, value_number((double)a.as.string->length))) return VM_STACK_OVERFLOW;
+                size_t character_count;
+                if (!utf8_count(a.as.string, &character_count)) return VM_UTF8_ERROR;
+                if (!push(vm, value_number((double)character_count))) return VM_STACK_OVERFLOW;
                 break;
             }
             case OP_SUBSTRING: {
                 Value start_value, length_value;
                 if (!pop(vm, &length_value) || !pop(vm, &start_value) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
-                size_t start_index, length;
+                size_t start_index, character_length, start_byte, end_byte;
+                size_t character_count;
                 if (a.type != VALUE_STRING || !a.as.string ||
-                    !array_index(start_value, &start_index) || !array_index(length_value, &length) ||
-                    start_index > a.as.string->length || length > a.as.string->length - start_index)
+                    !array_index(start_value, &start_index) ||
+                    !array_index(length_value, &character_length))
                     return VM_INDEX_ERROR;
-                String *part = string_new(a.as.string->chars + start_index, length);
+                if (!utf8_count(a.as.string, &character_count)) return VM_UTF8_ERROR;
+                if (start_index > character_count ||
+                    character_length > character_count - start_index ||
+                    !utf8_offset(a.as.string, start_index, &start_byte) ||
+                    !utf8_offset(a.as.string, start_index + character_length, &end_byte))
+                    return VM_INDEX_ERROR;
+                String *part = string_new(a.as.string->chars + start_byte,
+                                          end_byte - start_byte);
                 if (!part) return VM_OUT_OF_MEMORY;
                 if (!register_string(vm, part)) { value_string_free(part); return VM_OUT_OF_MEMORY; }
                 if (!push(vm, value_string(part))) return VM_STACK_OVERFLOW;
