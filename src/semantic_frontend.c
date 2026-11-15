@@ -135,7 +135,11 @@ static bool sem(Node *node, Scope *scope, bool in_function,
             if (!((node->as.call.name.length == 9 &&
                    !memcmp(node->as.call.name.name, "new_array", 9)) ||
                   (node->as.call.name.length == 5 &&
-                   !memcmp(node->as.call.name.name, "print", 5))) &&
+                   !memcmp(node->as.call.name.name, "print", 5)) ||
+                  (node->as.call.name.length == 6 &&
+                   !memcmp(node->as.call.name.name, "length", 6)) ||
+                  (node->as.call.name.length == 9 &&
+                   !memcmp(node->as.call.name.name, "substring", 9))) &&
                 lookup(scope, node->as.call.name) != 2) {
                 snprintf(error->message, sizeof error->message,
                          "unknown function '%.*s'", (int)node->as.call.name.length,
