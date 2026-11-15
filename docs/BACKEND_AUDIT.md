@@ -8,7 +8,8 @@
 - Bytecode chunks with source-line metadata, a constant pool and function metadata.
 - Stack-based VM with arithmetic, comparisons, global variables and conditional jumps.
 - AST-to-bytecode compilation and executable CLI pipeline.
-- Builtin `print(value)`, including strings.
+- Builtin `print(value)`, including strings and `nil`.
+- Source-level `nil` literal compiled using the existing `OP_NIL` instruction; nil equality uses existing `OP_EQUAL`.
 - String concatenation with `+` and content-based equality.
 - User-defined functions with positional parameters, local variables, return values and recursive calls.
 - Per-call VM frames with a saved instruction pointer and operand-stack base.
@@ -21,7 +22,7 @@
 ## Executable source subset
 
 - Top-level `let` declarations, global reads and assignments.
-- Numeric, boolean and string literals.
+- Numeric, boolean, nil and string literals.
 - Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `^`.
 - Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
 - Unary minus and `not`.
