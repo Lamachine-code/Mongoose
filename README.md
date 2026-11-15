@@ -32,6 +32,7 @@ The current executable subset supports:
   return values and recursion.
 - Short-circuit `and` and `or`.
 - String concatenation with `+`, content-based string equality and printing.
+- `length(string)` returns the string's byte length; `string[index]` returns a one-byte string; `substring(string, start, length)` extracts a byte range. String indices and substring offsets are zero-based.
 - Dynamic arrays created with `new_array()`, indexed reads and writes, automatic growth with nil-filled gaps, and reference semantics when passed to functions.
 
 Example:
