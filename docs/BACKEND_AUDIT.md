@@ -11,6 +11,7 @@
 - Builtin `print(value)`, including strings and `nil`.
 - Source-level `nil` literal compiled using the existing `OP_NIL` instruction; nil equality uses existing `OP_EQUAL`.
 - String concatenation with `+` and content-based equality.
+- String byte length through `length(string)`, zero-based byte indexing through `string[index]`, and byte-range extraction through `substring(string, start, length)`.
 - User-defined functions with positional parameters, local variables, return values and recursive calls.
 - Per-call VM frames with a saved instruction pointer and operand-stack base.
 - Local variable load/store instructions.
@@ -65,6 +66,7 @@ discarded and the right operand is evaluated.
 - Global slots: 256.
 - Closures, modules and garbage collection are not implemented.
 - Runtime diagnostics do not yet map all failures to source lines.
+- String operations are byte-oriented; UTF-8 multi-byte characters are not yet indexed by Unicode code point.
 - Modulo still follows C `fmod` behavior for negative operands; language semantics remain to be specified.
 
 ## Regression coverage added in this milestone
