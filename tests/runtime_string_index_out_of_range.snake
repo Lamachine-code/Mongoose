@@ -1,0 +1,2 @@
+let text = "cat"
+print(text[3])
