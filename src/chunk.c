@@ -8,6 +8,9 @@ void chunk_init(Chunk *chunk) {
 void chunk_free(Chunk *chunk) {
     free(chunk->code);
     free(chunk->lines);
+    for (size_t i = 0; i < chunk->constant_count; ++i)
+        if (chunk->constants[i].type == VALUE_STRING)
+            value_string_free(chunk->constants[i].as.string);
     free(chunk->constants);
     free(chunk->functions);
     chunk_init(chunk);
