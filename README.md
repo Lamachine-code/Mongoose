@@ -20,8 +20,9 @@ ctest --test-dir build --output-on-failure
 
 The current executable subset supports:
 - Global variables and assignments.
-- Numeric, boolean and string values, including escaped string literals.
+- Numeric, boolean, nil and string values, including escaped string literals.
 - Arithmetic, comparisons, unary minus and `not`.
+- The `nil` literal for absence of a value; compare with `==` or `!=`.
 - Conditional `if/else/stop` blocks.
 - `while condition do ... stop` loops, including nested loops and loops inside functions.
 - `break` exits the innermost loop; `continue` starts its next iteration.
