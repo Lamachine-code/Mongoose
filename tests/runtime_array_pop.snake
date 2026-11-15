@@ -1,0 +1,5 @@
+let values = new_array()
+push(values, "first")
+push(values, "second")
+print(pop(values))
+print(length(values))
