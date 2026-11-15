@@ -310,15 +310,39 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 break;
             }
             case OP_GET_INDEX: {
-                if (!pop(vm, &b) || !pop(vm, &a))
-                    return VM_STACK_UNDERFLOW;
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 size_t index;
-                if (a.type != VALUE_ARRAY || !a.as.array)
-                    return VM_ARRAY_REQUIRED;
-                if (!array_index(b, &index) || index >= a.as.array->count)
+                if (a.type == VALUE_STRING && a.as.string) {
+                    if (!array_index(b, &index) || index >= a.as.string->length) return VM_INDEX_ERROR;
+                    String *character = string_new(a.as.string->chars + index, 1);
+                    if (!character) return VM_OUT_OF_MEMORY;
+                    if (!register_string(vm, character)) { value_string_free(character); return VM_OUT_OF_MEMORY; }
+                    if (!push(vm, value_string(character))) return VM_STACK_OVERFLOW;
+                } else {
+                    if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
+                    if (!array_index(b, &index) || index >= a.as.array->count) return VM_INDEX_ERROR;
+                    if (!push(vm, a.as.array->items[index])) return VM_STACK_OVERFLOW;
+                }
+                break;
+            }
+            case OP_STRING_LENGTH: {
+                if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_STRING || !a.as.string) return VM_TYPE_ERROR;
+                if (!push(vm, value_number((double)a.as.string->length))) return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_SUBSTRING: {
+                Value start_value, length_value;
+                if (!pop(vm, &length_value) || !pop(vm, &start_value) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                size_t start_index, length;
+                if (a.type != VALUE_STRING || !a.as.string ||
+                    !array_index(start_value, &start_index) || !array_index(length_value, &length) ||
+                    start_index > a.as.string->length || length > a.as.string->length - start_index)
                     return VM_INDEX_ERROR;
-                if (!push(vm, a.as.array->items[index]))
-                    return VM_STACK_OVERFLOW;
+                String *part = string_new(a.as.string->chars + start_index, length);
+                if (!part) return VM_OUT_OF_MEMORY;
+                if (!register_string(vm, part)) { value_string_free(part); return VM_OUT_OF_MEMORY; }
+                if (!push(vm, value_string(part))) return VM_STACK_OVERFLOW;
                 break;
             }
             case OP_SET_INDEX: {
