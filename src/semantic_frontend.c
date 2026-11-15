@@ -139,7 +139,11 @@ static bool sem(Node *node, Scope *scope, bool in_function,
                   (node->as.call.name.length == 6 &&
                    !memcmp(node->as.call.name.name, "length", 6)) ||
                   (node->as.call.name.length == 9 &&
-                   !memcmp(node->as.call.name.name, "substring", 9))) &&
+                   !memcmp(node->as.call.name.name, "substring", 9)) ||
+                  (node->as.call.name.length == 4 &&
+                   !memcmp(node->as.call.name.name, "push", 4)) ||
+                  (node->as.call.name.length == 3 &&
+                   !memcmp(node->as.call.name.name, "pop", 3))) &&
                 lookup(scope, node->as.call.name) != 2) {
                 snprintf(error->message, sizeof error->message,
                          "unknown function '%.*s'", (int)node->as.call.name.length,
