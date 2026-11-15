@@ -20,6 +20,7 @@ typedef struct {
  Value globals[VM_GLOBAL_MAX]; bool global_defined[VM_GLOBAL_MAX];
  Value result;
  Array **arrays; size_t array_count, array_capacity;
+ String **strings; size_t string_count, string_capacity;
  CallFrame frames[VM_FRAMES_MAX]; size_t frame_count;
 } VM;
 void vm_init(VM *vm);
