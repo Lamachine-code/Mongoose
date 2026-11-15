@@ -230,7 +230,15 @@ static bool expression(Compiler*c,Node*n) {
                 return expression(c,n->as.call.args[0])&&emit(c,OP_PRINT,n->token)&&emit(c,OP_NIL,n->token);
             }            if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"length",6)) {
                 if(n->as.call.arg_count!=1)return fail(c,n->token,"length() expects one argument");
-                return expression(c,n->as.call.args[0])&&emit(c,OP_STRING_LENGTH,n->token);
+                return expression(c,n->as.call.args[0])&&emit(c,OP_LENGTH,n->token);
+            }
+            if(n->as.call.name.length==4&&!memcmp(n->as.call.name.name,"push",4)) {
+                if(n->as.call.arg_count!=2)return fail(c,n->token,"push() expects two arguments");
+                return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_ARRAY_PUSH,n->token);
+            }
+            if(n->as.call.name.length==3&&!memcmp(n->as.call.name.name,"pop",3)) {
+                if(n->as.call.arg_count!=1)return fail(c,n->token,"pop() expects one argument");
+                return expression(c,n->as.call.args[0])&&emit(c,OP_ARRAY_POP,n->token);
             }
             if(n->as.call.name.length==9&&!memcmp(n->as.call.name.name,"substring",9)) {
                 if(n->as.call.arg_count!=3)return fail(c,n->token,"substring() expects three arguments");
