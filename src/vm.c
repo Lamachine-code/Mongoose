@@ -397,12 +397,17 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 }
                 break;
             }
-            case OP_STRING_LENGTH: {
+            case OP_LENGTH: {
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
-                if (a.type != VALUE_STRING || !a.as.string) return VM_TYPE_ERROR;
-                size_t character_count;
-                if (!utf8_count(a.as.string, &character_count)) return VM_UTF8_ERROR;
-                if (!push(vm, value_number((double)character_count))) return VM_STACK_OVERFLOW;
+                size_t count;
+                if (a.type == VALUE_ARRAY && a.as.array) {
+                    count = a.as.array->count;
+                } else if (a.type == VALUE_STRING && a.as.string) {
+                    if (!utf8_count(a.as.string, &count)) return VM_UTF8_ERROR;
+                } else {
+                    return VM_TYPE_ERROR;
+                }
+                if (!push(vm, value_number((double)count))) return VM_STACK_OVERFLOW;
                 break;
             }
             case OP_SUBSTRING: {
@@ -425,6 +430,27 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (!part) return VM_OUT_OF_MEMORY;
                 if (!register_string(vm, part)) { value_string_free(part); return VM_OUT_OF_MEMORY; }
                 if (!push(vm, value_string(part))) return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_ARRAY_PUSH: {
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
+                size_t new_count = a.as.array->count + 1;
+                if (new_count > 65536 || !array_set(a.as.array, a.as.array->count, b))
+                    return new_count > 65536 ? VM_INDEX_ERROR : VM_OUT_OF_MEMORY;
+                if (!push(vm, value_number((double)a.as.array->count)))
+                    return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_ARRAY_POP: {
+                if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
+                Value value = value_nil();
+                if (a.as.array->count) {
+                    value = a.as.array->items[--a.as.array->count];
+                    a.as.array->items[a.as.array->count] = value_nil();
+                }
+                if (!push(vm, value)) return VM_STACK_OVERFLOW;
                 break;
             }
             case OP_SET_INDEX: {
