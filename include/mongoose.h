@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 typedef enum {
- T_EOF, T_ERROR, T_NEWLINE, T_IDENT, T_NUMBER,
+ T_EOF, T_ERROR, T_NEWLINE, T_IDENT, T_NUMBER, T_STRING,
  T_LET, T_FUNCTION, T_IF, T_THEN, T_ELSE, T_STOP, T_WHILE, T_DO, T_FOR, T_TO, T_BREAK, T_CONTINUE, T_TRUE, T_FALSE, T_RETURN,
  T_AND, T_OR, T_NOT,
  T_PLUS, T_MINUS, T_STAR, T_SLASH, T_FLOOR_DIV, T_PERCENT, T_POWER,
@@ -18,7 +18,7 @@ bool lex_source(const char *source, TokenArray *out, Diagnostic *error);
 void free_tokens(TokenArray *tokens);
 
 typedef enum {
- N_NUMBER, N_BOOL, N_IDENT, N_UNARY, N_BINARY, N_VAR, N_BLOCK,
+ N_NUMBER, N_BOOL, N_STRING, N_IDENT, N_UNARY, N_BINARY, N_VAR, N_BLOCK,
  N_IF, N_WHILE, N_FOR, N_BREAK, N_CONTINUE, N_FUNCTION, N_CALL, N_INDEX, N_RETURN, N_ASSIGN, N_PROGRAM
 } NodeKind;
 typedef struct Node Node;
