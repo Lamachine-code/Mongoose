@@ -2,12 +2,14 @@
 
 ## Implemented
 
-- Tagged runtime values: nil, booleans, numbers and array references.
+- Tagged runtime values: nil, booleans, numbers, strings and array references.
+- Chunk-owned immutable string constants and VM-owned concatenation results.
 - VM-owned dynamic arrays with indexed reads/writes and reference semantics.
 - Bytecode chunks with source-line metadata, a constant pool and function metadata.
 - Stack-based VM with arithmetic, comparisons, global variables and conditional jumps.
 - AST-to-bytecode compilation and executable CLI pipeline.
-- Builtin `print(value)`.
+- Builtin `print(value)`, including strings.
+- String concatenation with `+` and content-based equality.
 - User-defined functions with positional parameters, local variables, return values and recursive calls.
 - Per-call VM frames with a saved instruction pointer and operand-stack base.
 - Local variable load/store instructions.
@@ -19,7 +21,7 @@
 ## Executable source subset
 
 - Top-level `let` declarations, global reads and assignments.
-- Numeric and boolean literals.
+- Numeric, boolean and string literals.
 - Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `^`.
 - Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
 - Unary minus and `not`.
@@ -60,7 +62,7 @@ discarded and the right operand is evaluated.
 - Maximum function arity and local slot index are constrained by 8-bit operands.
 - Maximum 255 user-defined functions in one chunk.
 - Global slots: 256.
-- Strings, closures, modules and garbage collection are not implemented.
+- Closures, modules and garbage collection are not implemented.
 - Runtime diagnostics do not yet map all failures to source lines.
 - Modulo still follows C `fmod` behavior for negative operands; language semantics remain to be specified.
 
