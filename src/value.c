@@ -33,6 +33,7 @@ Value value_string(String *string) {
 }
 
 String *string_new(const char *chars, size_t length) {
+    if (length == (size_t)-1) return NULL;
     String *string = malloc(sizeof *string);
     if (!string) return NULL;
     string->chars = malloc(length + 1);
