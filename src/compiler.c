@@ -200,6 +200,7 @@ static bool expression(Compiler*c,Node*n) {
     switch(n->kind) {
         case N_NUMBER:return chunk_write_constant(c->chunk,value_number(n->as.number),n->token.line)||fail(c,n->token,"cannot add constant");
         case N_BOOL:return emit(c,n->as.boolean?OP_TRUE:OP_FALSE,n->token);
+        case N_NIL:return emit(c,OP_NIL,n->token);
         case N_STRING:return compile_string(c,n);
         case N_IDENT: {
             int slot=c->in_function?find_local(c,n->as.name):-1;
