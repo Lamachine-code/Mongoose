@@ -1,0 +1,3 @@
+let text = "Mongoose"
+print(length(text))
+print(length(""))
