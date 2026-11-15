@@ -30,6 +30,7 @@ static const char *vm_error(VMResult result) {
   case VM_ARRAY_REQUIRED:return "indexed value is not an array or string";
   case VM_INDEX_ERROR:return "invalid or out-of-range index";
   case VM_OUT_OF_MEMORY:return "out of memory";
+  case VM_UTF8_ERROR:return "invalid UTF-8 string";
   case VM_OK:return "success";
  }
  return "unknown runtime error";
