@@ -1,0 +1,2 @@
+print("same" == "same")
+print("same" != "different")
