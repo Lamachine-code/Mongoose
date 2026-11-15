@@ -228,6 +228,14 @@ static bool expression(Compiler*c,Node*n) {
             if(n->as.call.name.length==5&&!memcmp(n->as.call.name.name,"print",5)) {
                 if(n->as.call.arg_count!=1)return fail(c,n->token,"print() expects one argument");
                 return expression(c,n->as.call.args[0])&&emit(c,OP_PRINT,n->token)&&emit(c,OP_NIL,n->token);
+            }            if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"length",6)) {
+                if(n->as.call.arg_count!=1)return fail(c,n->token,"length() expects one argument");
+                return expression(c,n->as.call.args[0])&&emit(c,OP_STRING_LENGTH,n->token);
+            }
+            if(n->as.call.name.length==9&&!memcmp(n->as.call.name.name,"substring",9)) {
+                if(n->as.call.arg_count!=3)return fail(c,n->token,"substring() expects three arguments");
+                for(size_t i=0;i<3;i++)if(!expression(c,n->as.call.args[i]))return false;
+                return emit(c,OP_SUBSTRING,n->token);
             }
             int fn=find_function(c,n->as.call.name);
             if(fn<0)return fail(c,n->token,"unknown function in bytecode compiler");
