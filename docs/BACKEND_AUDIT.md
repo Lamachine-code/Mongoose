@@ -11,7 +11,9 @@
 - Builtin `print(value)`, including strings and `nil`.
 - Source-level `nil` literal compiled using the existing `OP_NIL` instruction; nil equality uses existing `OP_EQUAL`.
 - String concatenation with `+` and content-based equality.
-- UTF-8 code-point length through `length(string)`, zero-based code-point indexing through `string[index]`, and code-point-range extraction through `substring(string, start, length)`.
+- Generic `length(value)`: array element count or UTF-8 code-point count for strings.
+- Zero-based UTF-8 code-point indexing through `string[index]`, and code-point-range extraction through `substring(string, start, length)`.
+- Array mutation builtins: `push(array, value)` appends and returns the new length; `pop(array)` removes and returns the last value, or nil for an empty array.
 - User-defined functions with positional parameters, local variables, return values and recursive calls.
 - Per-call VM frames with a saved instruction pointer and operand-stack base.
 - Local variable load/store instructions.
