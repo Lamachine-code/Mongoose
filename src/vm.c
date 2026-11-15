@@ -1,6 +1,7 @@
 #include "vm.h"
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 void vm_init(VM *vm) {
     if (vm) *vm = (VM){0};
@@ -11,6 +12,9 @@ void vm_free(VM *vm) {
     for (size_t i = 0; i < vm->array_count; ++i)
         value_array_free(vm->arrays[i]);
     free(vm->arrays);
+    for (size_t i = 0; i < vm->string_count; ++i)
+        value_string_free(vm->strings[i]);
+    free(vm->strings);
     *vm = (VM){0};
 }
 
@@ -23,6 +27,18 @@ static bool register_array(VM *vm, Array *array) {
         vm->array_capacity = capacity;
     }
     vm->arrays[vm->array_count++] = array;
+    return true;
+}
+
+static bool register_string(VM *vm, String *string) {
+    if (vm->string_count == vm->string_capacity) {
+        size_t capacity = vm->string_capacity < 8 ? 8 : vm->string_capacity * 2;
+        String **strings = realloc(vm->strings, capacity * sizeof *strings);
+        if (!strings) return false;
+        vm->strings = strings;
+        vm->string_capacity = capacity;
+    }
+    vm->strings[vm->string_count++] = string;
     return true;
 }
 
@@ -120,6 +136,25 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (!push(vm, a)) return VM_STACK_OVERFLOW;
                 break;
             case OP_ADD:
+                if (vm->stack_count < 2) return VM_STACK_UNDERFLOW;
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type == VALUE_STRING && b.type == VALUE_STRING && a.as.string && b.as.string) {
+                    size_t length = a.as.string->length + b.as.string->length;
+                    if (length < a.as.string->length) return VM_OUT_OF_MEMORY;
+                    char *buffer = malloc(length ? length : 1);
+                    if (!buffer) return VM_OUT_OF_MEMORY;
+                    memcpy(buffer, a.as.string->chars, a.as.string->length);
+                    memcpy(buffer + a.as.string->length, b.as.string->chars, b.as.string->length);
+                    String *joined = string_new(buffer, length);
+                    free(buffer);
+                    if (!joined) return VM_OUT_OF_MEMORY;
+                    if (!register_string(vm, joined)) { value_string_free(joined); return VM_OUT_OF_MEMORY; }
+                    if (!push(vm, value_string(joined))) return VM_STACK_OVERFLOW;
+                } else {
+                    if (a.type != VALUE_NUMBER || b.type != VALUE_NUMBER) return VM_TYPE_ERROR;
+                    if (!push(vm, value_number(a.as.number + b.as.number))) return VM_STACK_OVERFLOW;
+                }
+                break;
             case OP_SUBTRACT:
             case OP_MULTIPLY:
             case OP_DIVIDE:
@@ -133,7 +168,6 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                      instruction == OP_MODULO) && right == 0.0)
                     return VM_DIVISION_BY_ZERO;
                 switch ((OpCode)instruction) {
-                    case OP_ADD: left += right; break;
                     case OP_SUBTRACT: left -= right; break;
                     case OP_MULTIPLY: left *= right; break;
                     case OP_DIVIDE: left /= right; break;
@@ -160,7 +194,11 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                          (a.type == VALUE_NUMBER &&
                           a.as.number == b.as.number) ||
                          (a.type == VALUE_ARRAY &&
-                          a.as.array == b.as.array));
+                          a.as.array == b.as.array) ||
+                         (a.type == VALUE_STRING && a.as.string && b.as.string &&
+                          a.as.string->length == b.as.string->length &&
+                          memcmp(a.as.string->chars, b.as.string->chars,
+                                 a.as.string->length) == 0));
                     if (!push(vm, value_bool(equal)))
                         return VM_STACK_OVERFLOW;
                 } else {
