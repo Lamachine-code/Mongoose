@@ -1,0 +1,7 @@
+function identity(value)
+    return value
+stop
+
+let values = new_array()
+values[0] = identity("from function")
+print(values[0])
