@@ -1,0 +1,3 @@
+print(nil == false)
+print(nil == 0)
+print(nil == "")
