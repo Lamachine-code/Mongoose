@@ -9,11 +9,11 @@ source syntax; bytecode generation and execution are separate backend work.
 - Identifiers contain ASCII letters, digits and underscores; the first
   character is a letter or underscore.
 - Numeric literals are decimal integers or decimal fractions.
-- `true` and `false` are boolean literals.
+- `true` and `false` are boolean literals; `nil` is the absence-of-value literal.
 - Double-quoted strings support `\\n`, `\\r`, `\\t`, `\\0`, `\\\\` and `\\"` escapes.
 - Newlines separate statements.
 - Keywords are `let`, `function`, `if`, `then`, `else`, `stop`, `while`, `do`,
-  `for`, `to`, `return`, `and`, `or` and `not`.
+  `for`, `to`, `nil`, `return`, `and`, `or` and `not`.
 - `#` starts a line comment.
 - `//` starts a line comment when it is the first non-whitespace text on a
   line; otherwise it is the floor-division operator. This preserves the
@@ -52,7 +52,7 @@ unary          = ("-" | "not"), unary | power ;
 power          = postfix, [ "^", unary ] ;
 postfix        = primary, { "(", [ arguments ], ")" | "[", expression, "]" } ;
 arguments      = expression, { ",", expression } ;
-primary        = NUMBER | STRING | "true" | "false" | IDENTIFIER
+primary        = NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER
                | "(", expression, ")" ;
 separators     = { NEWLINE } ;
 ```
@@ -72,11 +72,10 @@ separators     = { NEWLINE } ;
 - `return` is valid only inside a function.
 - `break` and `continue` are valid only inside `while` or `for` loops; they target the innermost loop.
 - `for` uses an inclusive upper bound; start and end expressions are evaluated once, and its variable is scoped to the loop.
+- `nil` is distinct from `false`, `0` and the empty string; `==` and `!=` compare it by value type.
 - This baseline has no static type system; it does not infer or enforce
   numeric/boolean/array types.
 
 ## Open design boundary
 
-The language currently has no string literals, array literals,
-classes, imports or user-defined types in its AST. These should not be added
-implicitly as part of the frontend stabilization work.
+The language currently has no array literals, classes, imports or user-defined types in its AST.
