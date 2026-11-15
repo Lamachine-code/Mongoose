@@ -10,6 +10,7 @@ source syntax; bytecode generation and execution are separate backend work.
   character is a letter or underscore.
 - Numeric literals are decimal integers or decimal fractions.
 - `true` and `false` are boolean literals.
+- Double-quoted strings support `\\n`, `\\r`, `\\t`, `\\0`, `\\\\` and `\\"` escapes.
 - Newlines separate statements.
 - Keywords are `let`, `function`, `if`, `then`, `else`, `stop`, `while`, `do`,
   `for`, `to`, `return`, `and`, `or` and `not`.
@@ -51,7 +52,7 @@ unary          = ("-" | "not"), unary | power ;
 power          = postfix, [ "^", unary ] ;
 postfix        = primary, { "(", [ arguments ], ")" | "[", expression, "]" } ;
 arguments      = expression, { ",", expression } ;
-primary        = NUMBER | "true" | "false" | IDENTIFIER
+primary        = NUMBER | STRING | "true" | "false" | IDENTIFIER
                | "(", expression, ")" ;
 separators     = { NEWLINE } ;
 ```
