@@ -1,5 +1,6 @@
 #include "compiler.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define COMPILER_GLOBAL_MAX 256
@@ -137,6 +138,37 @@ static bool emit_loop_cleanup(Compiler *c, size_t variable_count, Token t) {
     return true;
 }
 static bool expression(Compiler*c,Node*n);
+static bool compile_string(Compiler *c, Node *n) {
+    const char *raw = n->token.start + 1;
+    size_t raw_length = n->token.length - 2;
+    char *decoded = malloc(raw_length + 1);
+    if (!decoded) return fail(c, n->token, "out of memory decoding string literal");
+    size_t length = 0;
+    for (size_t i = 0; i < raw_length; ++i) {
+        char ch = raw[i];
+        if (ch == '\\') {
+            if (++i >= raw_length) { free(decoded); return fail(c, n->token, "invalid string escape"); }
+            switch (raw[i]) {
+                case 'n': ch = '\n'; break;
+                case 'r': ch = '\r'; break;
+                case 't': ch = '\t'; break;
+                case '\\': ch = '\\'; break;
+                case '"': ch = '"'; break;
+                case '0': ch = '\0'; break;
+                default: free(decoded); return fail(c, n->token, "unknown string escape");
+            }
+        }
+        decoded[length++] = ch;
+    }
+    String *string = string_new(decoded, length);
+    free(decoded);
+    if (!string) return fail(c, n->token, "out of memory creating string constant");
+    if (!chunk_write_constant(c->chunk, value_string(string), n->token.line)) {
+        value_string_free(string);
+        return fail(c, n->token, "cannot add string constant");
+    }
+    return true;
+}
 static bool binary(Compiler*c,Node*n) {
     TokenType type=n->as.binary.op.type;
     if(type==T_AND||type==T_OR) {
@@ -165,6 +197,7 @@ static bool expression(Compiler*c,Node*n) {
     switch(n->kind) {
         case N_NUMBER:return chunk_write_constant(c->chunk,value_number(n->as.number),n->token.line)||fail(c,n->token,"cannot add constant");
         case N_BOOL:return emit(c,n->as.boolean?OP_TRUE:OP_FALSE,n->token);
+        case N_STRING:return compile_string(c,n);
         case N_IDENT: {
             int slot=c->in_function?find_local(c,n->as.name):-1;
             if(slot>=0)return emit_slot(c,OP_GET_LOCAL,(uint8_t)slot,n->token);
