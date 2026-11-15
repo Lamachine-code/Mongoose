@@ -20,7 +20,7 @@ ctest --test-dir build --output-on-failure
 
 The current executable subset supports:
 - Global variables and assignments.
-- Numeric and boolean values.
+- Numeric, boolean and string values, including escaped string literals.
 - Arithmetic, comparisons, unary minus and `not`.
 - Conditional `if/else/stop` blocks.
 - `while condition do ... stop` loops, including nested loops and loops inside functions.
@@ -30,6 +30,7 @@ The current executable subset supports:
 - User-defined functions, positional parameters, local variables, calls,
   return values and recursion.
 - Short-circuit `and` and `or`.
+- String concatenation with `+`, content-based string equality and printing.
 - Dynamic arrays created with `new_array()`, indexed reads and writes, automatic growth with nil-filled gaps, and reference semantics when passed to functions.
 
 Example:
@@ -52,7 +53,7 @@ Output:
 120
 ```
 
-Strings, closures, modules and garbage collection are not executable yet. The frontend checker is retained separately
+Closures, modules and garbage collection are not implemented yet. The frontend checker is retained separately
 as `mongoose_check`, so the broader parser and semantic regression suite can
 continue to validate syntax that the runtime compiler has not implemented.
 
