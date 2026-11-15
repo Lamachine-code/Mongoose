@@ -159,3 +159,12 @@ add_test(NAME runtime_string_length_type_error COMMAND mongoose ${CMAKE_CURRENT_
 set_tests_properties(runtime_string_length_type_error PROPERTIES WILL_FAIL TRUE)
 add_test(NAME runtime_string_substring_bounds COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_string_substring_bounds.snake)
 set_tests_properties(runtime_string_substring_bounds PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME runtime_utf8_string_length COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_utf8_string_length.snake)
+set_tests_properties(runtime_utf8_string_length PROPERTIES PASS_REGULAR_EXPRESSION "4")
+add_test(NAME runtime_utf8_string_index_multibyte COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_utf8_string_index.snake)
+set_tests_properties(runtime_utf8_string_index_multibyte PROPERTIES PASS_REGULAR_EXPRESSION "🙂")
+add_test(NAME runtime_utf8_string_substring COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_utf8_string_substring.snake)
+set_tests_properties(runtime_utf8_string_substring PROPERTIES PASS_REGULAR_EXPRESSION "é🙂")
+add_test(NAME runtime_utf8_string_index_out_of_range COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_utf8_string_index_out_of_range.snake)
+set_tests_properties(runtime_utf8_string_index_out_of_range PROPERTIES WILL_FAIL TRUE)
