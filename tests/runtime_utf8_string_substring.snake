@@ -1,0 +1,2 @@
+let text = "Aé🙂Z"
+print(substring(text, 1, 2))
