@@ -1,0 +1,4 @@
+function empty()
+stop
+
+print(empty() == nil)
