@@ -74,7 +74,9 @@ separators     = { NEWLINE } ;
 - `break` and `continue` are valid only inside `while` or `for` loops; they target the innermost loop.
 - `for` uses an inclusive upper bound; start and end expressions are evaluated once, and its variable is scoped to the loop.
 - `nil` is distinct from `false`, `0` and the empty string; `==` and `!=` compare it by value type.
-- `length(string)` counts UTF-8 Unicode code points. `string[index]` returns one complete code point as a string. `substring(string, start, length)` extracts a range of code points; invalid indices and ranges are runtime errors. Invalid UTF-8 encountered by these operations is a runtime error.
+- `length(value)` returns an array's element count or a string's UTF-8 code-point count. Other value types cause a runtime type error.
+- `string[index]` returns one complete UTF-8 code point as a string. `substring(string, start, length)` extracts a range of code points; invalid indices and ranges are runtime errors. Invalid UTF-8 encountered by these operations is a runtime error.
+- `push(array, value)` appends one value and returns the resulting array length. `pop(array)` removes and returns the last value; popping an empty array returns `nil`. Both require an array.
 - This baseline has no static type system; it does not infer or enforce
   numeric/boolean/array types.
 
