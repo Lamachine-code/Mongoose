@@ -1,0 +1,5 @@
+let values = new_array()
+push(values, 10)
+push(values, 20)
+push(values, 30)
+print(length(values))
