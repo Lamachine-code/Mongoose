@@ -17,6 +17,16 @@ static char *read_file(const char *path) {
  if(ferror(file)){free(source);fclose(file);return NULL;}
  fclose(file); source[count]='\0'; return source;
 }
+static const char *diagnostic_phase_name(DiagnosticPhase phase) {
+ switch(phase) {
+  case DIAGNOSTIC_LEXICAL:return "lexical error";
+  case DIAGNOSTIC_SYNTAX:return "syntax error";
+  case DIAGNOSTIC_SEMANTIC:return "semantic error";
+  case DIAGNOSTIC_COMPILE:return "compile error";
+  case DIAGNOSTIC_NONE:break;
+ }
+ return "compile error";
+}
 static const char *vm_error(VMResult result) {
  switch(result) {
   case VM_STACK_OVERFLOW:return "runtime stack overflow";
@@ -43,11 +53,12 @@ int main(int argc,char **argv) {
  Diagnostic diagnostic={0}; TokenArray tokens={0}; Ast ast={0}; Chunk chunk;
  chunk_init(&chunk); VM vm; vm_init(&vm);
  bool ok=lex_source(source,&tokens,&diagnostic);
- if(ok) ok=parse_tokens(&tokens,&ast,&diagnostic);
- if(ok) ok=analyze_ast(&ast,&diagnostic);
- if(ok) ok=compile_ast(&ast,&chunk,&diagnostic);
- if(!ok) fprintf(stderr,"%s:%d:%d: %s\n",argv[1],diagnostic.line,diagnostic.column,
-                 diagnostic.message[0]?diagnostic.message:"compilation failed");
+ if(!ok) diagnostic.phase=DIAGNOSTIC_LEXICAL;
+ if(ok) { ok=parse_tokens(&tokens,&ast,&diagnostic); if(!ok) diagnostic.phase=DIAGNOSTIC_SYNTAX; }
+ if(ok) { ok=analyze_ast(&ast,&diagnostic); if(!ok) diagnostic.phase=DIAGNOSTIC_SEMANTIC; }
+ if(ok) { ok=compile_ast(&ast,&chunk,&diagnostic); if(!ok) diagnostic.phase=DIAGNOSTIC_COMPILE; }
+ if(!ok) fprintf(stderr,"%s:%d:%d: %s: %s\n",argv[1],diagnostic.line,diagnostic.column,
+                 diagnostic_phase_name(diagnostic.phase),diagnostic.message[0]?diagnostic.message:"compilation failed");
  else {
   VMResult result=vm_run(&vm,&chunk);
   if(result!=VM_OK){fprintf(stderr,"%s:%d: runtime error: %s\n",argv[1],vm.error_line,vm_error(result));ok=false;}
