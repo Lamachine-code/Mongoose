@@ -200,3 +200,10 @@ add_test(NAME runtime_nested_array_write COMMAND mongoose ${CMAKE_CURRENT_SOURCE
 set_tests_properties(runtime_nested_array_write PROPERTIES PASS_REGULAR_EXPRESSION "99")
 add_test(NAME runtime_nested_array_aliasing COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_nested_array_aliasing.snake)
 set_tests_properties(runtime_nested_array_aliasing PROPERTIES PASS_REGULAR_EXPRESSION "77")
+
+add_test(NAME runtime_array_literal COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_literal.snake)
+set_tests_properties(runtime_array_literal PROPERTIES PASS_REGULAR_EXPRESSION "99")
+add_test(NAME runtime_nested_array_literal COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_nested_array_literal.snake)
+set_tests_properties(runtime_nested_array_literal PROPERTIES PASS_REGULAR_EXPRESSION "8")
+add_test(NAME runtime_array_literal_empty_and_expressions COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_literal_empty_and_expressions.snake)
+set_tests_properties(runtime_array_literal_empty_and_expressions PROPERTIES PASS_REGULAR_EXPRESSION "true")
