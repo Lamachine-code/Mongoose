@@ -299,3 +299,7 @@ add_test(NAME diagnostic_reports_assignment_to_function COMMAND ${CMAKE_COMMAND}
 
 add_test(NAME diagnostic_reports_duplicate_function_parameter COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_duplicate_parameter.snake "-DEXPECTED=duplicate parameter 'value' in function 'calculate'" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
 add_test(NAME diagnostic_reports_unknown_function COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_unknown_function.snake "-DEXPECTED=unknown function 'missing'" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+
+
+# Collection indices are bounded before allocation or growth.
+add_test(NAME runtime_array_rejects_index_above_limit COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_index_limit.snake "-DEXPECTED=invalid or out-of-range index" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_message.cmake)
