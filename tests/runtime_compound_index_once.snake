@@ -1,0 +1,9 @@
+let calls = 0
+function next_index()
+    calls += 1
+    return 0
+stop
+let values = [10]
+values[next_index()] += 5
+print(calls)
+print(values[0])
