@@ -1,0 +1,9 @@
+function update(record)
+    record["score"] = 100
+    return record
+stop
+
+let original = ["score": 10]
+let changed = update(original)
+print(original["score"])
+print(changed["score"])
