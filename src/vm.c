@@ -178,6 +178,17 @@ static Value dictionary_get(Dictionary *dictionary, String *key) {
     return value_nil();
 }
 
+static bool dictionary_has_key(Dictionary *dictionary, String *key) {
+    for (size_t i = 0; i < dictionary->count; ++i) {
+        String *existing = dictionary->entries[i].key;
+        if (existing->length == key->length &&
+            memcmp(existing->chars, key->chars, key->length) == 0)
+            return true;
+    }
+    return false;
+}
+
+
 static bool push(VM *vm, Value value) {
     if (vm->stack_count == VM_STACK_MAX) return false;
     vm->stack[vm->stack_count++] = value;
@@ -535,6 +546,36 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                     a.as.array->items[a.as.array->count] = value_nil();
                 }
                 if (!push(vm, value)) return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_DICTIONARY_KEYS:
+            case OP_DICTIONARY_VALUES: {
+                if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_DICTIONARY || !a.as.dictionary)
+                    return VM_DICTIONARY_REQUIRED;
+                Array *array = calloc(1, sizeof *array);
+                if (!array) return VM_OUT_OF_MEMORY;
+                if (!register_array(vm, array)) {
+                    value_array_free(array);
+                    return VM_OUT_OF_MEMORY;
+                }
+                for (size_t i = 0; i < a.as.dictionary->count; ++i) {
+                    Value item = instruction == OP_DICTIONARY_KEYS
+                        ? value_string(a.as.dictionary->entries[i].key)
+                        : a.as.dictionary->entries[i].value;
+                    if (!array_set(array, i, item)) return VM_OUT_OF_MEMORY;
+                }
+                if (!push(vm, value_array(array))) return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_DICTIONARY_HAS_KEY: {
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_DICTIONARY || !a.as.dictionary)
+                    return VM_DICTIONARY_REQUIRED;
+                if (b.type != VALUE_STRING || !b.as.string)
+                    return VM_TYPE_ERROR;
+                if (!push(vm, value_bool(dictionary_has_key(a.as.dictionary, b.as.string))))
+                    return VM_STACK_OVERFLOW;
                 break;
             }
             case OP_SET_INDEX: {
