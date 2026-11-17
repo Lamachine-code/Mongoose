@@ -1,0 +1,14 @@
+function inner()
+    let divisor = 0
+    return 10 / divisor
+stop
+
+function middle()
+    return inner()
+stop
+
+function outer()
+    return middle()
+stop
+
+outer()
