@@ -442,6 +442,15 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                     return VM_STACK_OVERFLOW;
                 break;
             }
+            case OP_ARRAY_LITERAL_ADD: {
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
+                if (a.as.array->count >= 65536 ||
+                    !array_set(a.as.array, a.as.array->count, b))
+                    return a.as.array->count >= 65536 ? VM_INDEX_ERROR : VM_OUT_OF_MEMORY;
+                if (!push(vm, a)) return VM_STACK_OVERFLOW;
+                break;
+            }
             case OP_ARRAY_POP: {
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
