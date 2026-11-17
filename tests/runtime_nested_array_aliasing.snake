@@ -1,0 +1,6 @@
+let row = new_array()
+push(row, 10)
+let matrix = new_array()
+push(matrix, row)
+matrix[0][0] = 77
+print(row[0])
