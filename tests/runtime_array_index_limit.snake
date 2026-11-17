@@ -1,0 +1,2 @@
+let items = []
+items[65536] = "too large"
