@@ -1,0 +1,7 @@
+let person = ["name": "Alice", "age": 25]
+let names = keys(person)
+let entries = values(person)
+print(names[0])
+print(names[1])
+print(entries[0])
+print(entries[1])
