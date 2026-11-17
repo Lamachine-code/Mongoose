@@ -1,0 +1,8 @@
+let data = ["count": 1]
+let old_keys = keys(data)
+data["count"] = 2
+data["active"] = true
+print(length(old_keys))
+print(length(keys(data)))
+print(values(data)[0])
+print(values(data)[1])
