@@ -41,6 +41,15 @@ static bool fail(Compiler *c, Token t, const char *m) {
     snprintf(c->error->message, sizeof c->error->message, "%s", m);
     c->error->line = t.line; c->error->column = t.column; return false;
 }
+static bool fail_arity(Compiler *c, Token t, Name function, size_t expected, size_t received) {
+    snprintf(c->error->message, sizeof c->error->message,
+             "%.*s() expects %zu argument%s, received %zu",
+             (int)function.length, function.name, expected,
+             expected == 1 ? "" : "s", received);
+    c->error->line = t.line;
+    c->error->column = t.column;
+    return false;
+}
 static bool emit(Compiler *c, OpCode op, Token t) {
     return chunk_write(c->chunk, (uint8_t)op, t.line) ||
            fail(c, t, "out of memory while emitting bytecode");
@@ -282,7 +291,7 @@ static bool expression(Compiler*c,Node*n) {
             }
             int fn=find_function(c,n->as.call.name);
             if(fn<0)return fail(c,n->token,"unknown function in bytecode compiler");
-            if(n->as.call.arg_count!=c->functions[fn].arity)return fail(c,n->token,"function called with incorrect number of arguments");
+            if(n->as.call.arg_count!=c->functions[fn].arity)return fail_arity(c,n->token,n->as.call.name,c->functions[fn].arity,n->as.call.arg_count);
             for(size_t i=0;i<n->as.call.arg_count;i++)if(!expression(c,n->as.call.args[i]))return false;
             return emit_slot(c,OP_CALL,(uint8_t)fn,n->token);
         }
