@@ -47,6 +47,7 @@ String *string_new(const char *chars, size_t length) {
     if (length) memcpy(string->chars, chars, length);
     string->chars[length] = '\0';
     string->length = length;
+    string->marked = false;
     return string;
 }
 
