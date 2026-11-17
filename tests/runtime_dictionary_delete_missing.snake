@@ -1,0 +1,3 @@
+let person = ["name": "Alice"]
+print(delete(person, "age"))
+print(length(person))
