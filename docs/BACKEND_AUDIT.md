@@ -2,17 +2,17 @@
 
 ## Implemented
 
-- Tagged runtime values: nil, booleans, numbers, strings and array references.
+- Tagged runtime values: nil, booleans, numbers, strings, array references and dictionary references.
 - Chunk-owned immutable string constants and VM-owned concatenation results.
-- VM-owned dynamic arrays with indexed reads/writes and reference semantics, including nested arrays and chained indexed reads/writes.
-- Array literal construction, including empty, nested and computed-element literals, using `OP_NEW_ARRAY` and `OP_ARRAY_LITERAL_ADD`.
+- VM-owned dynamic arrays and dictionaries with indexed reads/writes and reference semantics, including nested collections and chained indexed reads/writes.
+- Array literal construction, including empty, nested and computed-element literals, using `OP_NEW_ARRAY` and `OP_ARRAY_LITERAL_ADD`.\n- Dictionary literal construction, including empty dictionaries (`[:]`), nested values and duplicate-key replacement, using `OP_NEW_DICTIONARY` and `OP_DICTIONARY_LITERAL_ADD`.
 - Bytecode chunks with source-line metadata, a constant pool and function metadata.
 - Stack-based VM with arithmetic, comparisons, global variables and conditional jumps.
 - AST-to-bytecode compilation and executable CLI pipeline.
 - Builtin `print(value)`, including strings and `nil`.
 - Source-level `nil` literal compiled using the existing `OP_NIL` instruction; nil equality uses existing `OP_EQUAL`.
 - String concatenation with `+` and content-based equality.
-- Generic `length(value)`: array element count or UTF-8 code-point count for strings.
+- Generic `length(value)`: array element count, dictionary key count or UTF-8 code-point count for strings.
 - Zero-based UTF-8 code-point indexing through `string[index]`, and code-point-range extraction through `substring(string, start, length)`.
 - Array mutation builtins: `push(array, value)` appends and returns the new length; `pop(array)` removes and returns the last value, or nil for an empty array.
 - User-defined functions with positional parameters, local variables, return values and recursive calls.
@@ -38,7 +38,7 @@
 - `while condition do ... stop` loops with nested-loop support.
 - `break` exits the innermost loop; `continue` jumps to its next condition check.
 - Semantic analysis rejects `break` and `continue` outside loops.
-- `new_array()` and array literals (`[]`, `[value, ...]`), indexed reads/writes, nested arrays (`matrix[row][column]`) and array arguments passed by reference.
+- `new_array()` and array literals (`[]`, `[value, ...]`), indexed reads/writes, nested arrays (`matrix[row][column]`) and array arguments passed by reference.\n- Dictionary literals (`["key": value, ...]`, `[:]`), string-keyed indexed reads/writes, nested dictionaries/arrays and dictionary arguments passed by reference.
 
 ## Runtime architecture
 
@@ -67,7 +67,7 @@ discarded and the right operand is evaluated.
 - Maximum function arity and local slot index are constrained by 8-bit operands.
 - Maximum 255 user-defined functions in one chunk.
 - Global slots: 256.
-- Closures, modules and garbage collection are not implemented.
+- Dictionary keys are strings; missing-key reads return `nil`. Closures, modules and garbage collection are not implemented.
 - Runtime diagnostics do not yet map all failures to source lines.
 - String indexing, length and substring operate on UTF-8 code points, not grapheme clusters. Invalid UTF-8 is rejected by these operations.
 - Modulo still follows C `fmod` behavior for negative operands; language semantics remain to be specified.
@@ -81,7 +81,7 @@ discarded and the right operand is evaluated.
 - `break` and `continue`, nested-loop targeting, local cleanup on loop exit, and semantic rejection outside loops.
 - Inclusive `for` loops, one-time bound evaluation, loop-variable scope, and `continue` increment behavior.
 - Nested-array reads, nested indexed assignment, and aliasing between an inner array and its containing array.
-- Array literals: basic construction, nested literals, empty literals, and expression-valued elements.
+- Array literals: basic construction, nested literals, empty literals, and expression-valued elements.\n- Dictionaries: literal construction, empty dictionaries, reads, writes, missing keys, duplicate keys, nested collections, function aliasing and rejection of non-string keys.
 
 Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Each compiler loop context records its condition target, lexical scope depth, variable-slot boundary and pending `break` jumps. A `break` emits a forward jump patched to the end of the innermost loop; a `continue` emits a backward jump to that loop's condition.
 
