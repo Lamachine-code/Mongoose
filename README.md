@@ -89,3 +89,11 @@ print(length(person))
 Reading a missing key returns `nil`. Assigning to an existing key replaces
 its value; assigning to a missing key inserts it. Updating an existing key preserves its insertion position. `keys(person)` and `values(person)` return arrays in insertion order; `has_key(person, "name")` checks membership. `for key in person do ... stop` iterates dictionary keys in insertion order. `delete(person, "age")` removes a key without changing the relative order of remaining entries. Dictionaries are reference
 values and can be nested in arrays, dictionaries and function arguments.
+
+## Diagnostics
+
+Frontend failures report the source file, one-based line and column, and the
+phase that rejected the program (`lexical error`, `syntax error`, `semantic
+error`, or `compile error`). Both `mongoose` and `mongoose_check` use the same
+format so editor integrations and command-line users can distinguish the
+origin of a failure.
