@@ -1,0 +1,2 @@
+let person = ["name": "Alice"]
+delete(person, 1)
