@@ -1,0 +1,3 @@
+for item in 42 do
+    print(item)
+stop
