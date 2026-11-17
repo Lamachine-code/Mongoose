@@ -193,3 +193,10 @@ add_test(NAME runtime_array_pop_requires_array COMMAND mongoose ${CMAKE_CURRENT_
 set_tests_properties(runtime_array_pop_requires_array PROPERTIES WILL_FAIL TRUE)
 add_test(NAME runtime_length_rejects_other_types COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_length_type_error.snake)
 set_tests_properties(runtime_length_rejects_other_types PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME runtime_nested_array_read COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_nested_array_read.snake)
+set_tests_properties(runtime_nested_array_read PROPERTIES PASS_REGULAR_EXPRESSION "20")
+add_test(NAME runtime_nested_array_write COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_nested_array_write.snake)
+set_tests_properties(runtime_nested_array_write PROPERTIES PASS_REGULAR_EXPRESSION "99")
+add_test(NAME runtime_nested_array_aliasing COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_nested_array_aliasing.snake)
+set_tests_properties(runtime_nested_array_aliasing PROPERTIES PASS_REGULAR_EXPRESSION "77")
