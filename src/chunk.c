@@ -1,5 +1,6 @@
 #include "chunk.h"
 #include <stdlib.h>
+#include <stdint.h>
 
 void chunk_init(Chunk *chunk) {
     *chunk = (Chunk){0};
@@ -16,8 +17,30 @@ void chunk_free(Chunk *chunk) {
     chunk_init(chunk);
 }
 
+static bool chunk_capacity(size_t current, size_t minimum,
+                            size_t element_size, size_t *result) {
+    if (!result || element_size == 0) return false;
+    size_t maximum = SIZE_MAX / element_size;
+    if (minimum > maximum) return false;
+    size_t capacity = current < 8 ? 8 : current;
+    if (capacity > maximum) capacity = maximum;
+    while (capacity < minimum) {
+        if (capacity > maximum / 2) {
+            capacity = minimum;
+            break;
+        }
+        capacity *= 2;
+    }
+    if (capacity < minimum || capacity > maximum) return false;
+    *result = capacity;
+    return true;
+}
+
 static bool grow_code(Chunk *chunk) {
-    size_t capacity = chunk->capacity < 8 ? 8 : chunk->capacity * 2;
+    size_t capacity;
+    if (!chunk_capacity(chunk->capacity, chunk->count + 1,
+                        sizeof *chunk->code, &capacity) ||
+        capacity > SIZE_MAX / sizeof *chunk->lines) return false;
     uint8_t *code = malloc(capacity * sizeof *code);
     int *lines = malloc(capacity * sizeof *lines);
     if (!code || !lines) {
@@ -48,7 +71,9 @@ bool chunk_write(Chunk *chunk, uint8_t byte, int line) {
 bool chunk_add_constant(Chunk *chunk, Value value, uint16_t *index) {
     if (chunk->constant_count > UINT16_MAX) return false;
     if (chunk->constant_count == chunk->constant_capacity) {
-        size_t capacity = chunk->constant_capacity < 8 ? 8 : chunk->constant_capacity * 2;
+        size_t capacity;
+        if (!chunk_capacity(chunk->constant_capacity, chunk->constant_count + 1,
+                            sizeof *chunk->constants, &capacity)) return false;
         Value *constants = realloc(chunk->constants, capacity * sizeof *constants);
         if (!constants) return false;
         chunk->constants = constants;
@@ -71,8 +96,9 @@ bool chunk_add_function(Chunk *chunk, size_t offset, uint8_t arity,
                         const char *name, size_t name_length, uint8_t *index) {
     if (chunk->function_count >= UINT8_MAX) return false;
     if (chunk->function_count == chunk->function_capacity) {
-        size_t capacity = chunk->function_capacity < 8
-            ? 8 : chunk->function_capacity * 2;
+        size_t capacity;
+        if (!chunk_capacity(chunk->function_capacity, chunk->function_count + 1,
+                            sizeof *chunk->functions, &capacity)) return false;
         FunctionInfo *functions =
             realloc(chunk->functions, capacity * sizeof *functions);
         if (!functions) return false;
