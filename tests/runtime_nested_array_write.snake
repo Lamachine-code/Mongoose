@@ -1,0 +1,7 @@
+let matrix = new_array()
+let row = new_array()
+push(row, 1)
+push(row, 2)
+push(matrix, row)
+matrix[0][1] = 99
+print(matrix[0][1])
