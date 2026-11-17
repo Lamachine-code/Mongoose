@@ -38,7 +38,9 @@ static const char *vm_error(VMResult result) {
   case VM_CALL_OVERFLOW:return "maximum call depth exceeded";
   case VM_ARITY_ERROR:return "incorrect function argument count";
   case VM_ARRAY_REQUIRED:return "indexed value is not an array, dictionary or string";
-  case VM_DICTIONARY_REQUIRED:return "value is not a dictionary";
+  case VM_DICTIONARY_REQUIRED:return "operation requires a dictionary";
+  case VM_STRING_REQUIRED:return "dictionary key must be a string";
+  case VM_INDEXABLE_REQUIRED:return "indexed value must be an array, dictionary or string";
   case VM_INDEX_ERROR:return "invalid or out-of-range index";
   case VM_OUT_OF_MEMORY:return "out of memory";
   case VM_UTF8_ERROR:return "invalid UTF-8 string";
