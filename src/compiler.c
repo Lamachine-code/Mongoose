@@ -367,6 +367,83 @@ static bool statement(Compiler*c,Node*n) {
             for(size_t i=0;ok&&cleaned&&i<loop->break_count;i++)ok=patch_jump(c,loop->break_jumps[i],n->token);
             return ok&&cleaned;
         }
+        case N_FOR_EACH: {
+            if (c->loop_depth == COMPILER_SCOPE_MAX)
+                return fail(c, n->token, "loop nesting limit exceeded");
+            if (!enter_scope(c, n->token)) return false;
+            Loop *loop = &c->loops[c->loop_depth++];
+            memset(loop, 0, sizeof *loop);
+            loop->break_variable_count = c->in_function ? c->local_count : c->global_count;
+            static const char array_name[] = "\001for_array";
+            static const char index_name[] = "\001for_index";
+            static const char count_name[] = "\001for_count";
+            Name array_hidden = {array_name, sizeof array_name - 1};
+            Name index_hidden = {index_name, sizeof index_name - 1};
+            Name count_hidden = {count_name, sizeof count_name - 1};
+            uint8_t array_slot = 0, index_slot = 0, count_slot = 0, value_slot = 0;
+            bool ok = expression(c, n->as.for_each.iterable) &&
+                      emit(c, OP_ITER_INIT, n->token);
+            if (ok && c->in_function) ok = add_local(c, array_hidden, n->token, &array_slot);
+            else if (ok) ok = add_global(c, array_hidden, n->token, &array_slot) &&
+                              emit_slot(c, OP_DEFINE_GLOBAL, array_slot, n->token);
+            if (ok) ok = chunk_write_constant(c->chunk, value_number(0), n->token.line) ||
+                         fail(c, n->token, "cannot add iterator index constant");
+            if (ok && c->in_function) ok = add_local(c, index_hidden, n->token, &index_slot);
+            else if (ok) ok = add_global(c, index_hidden, n->token, &index_slot) &&
+                              emit_slot(c, OP_DEFINE_GLOBAL, index_slot, n->token);
+            if (ok) ok = c->in_function
+                ? emit_slot(c, OP_GET_LOCAL, array_slot, n->token)
+                : emit_slot(c, OP_GET_GLOBAL, array_slot, n->token);
+            if (ok) ok = emit(c, OP_LENGTH, n->token);
+            if (ok && c->in_function) ok = add_local(c, count_hidden, n->token, &count_slot);
+            else if (ok) ok = add_global(c, count_hidden, n->token, &count_slot) &&
+                              emit_slot(c, OP_DEFINE_GLOBAL, count_slot, n->token);
+            if (ok) ok = emit(c, OP_NIL, n->token);
+            if (ok && c->in_function) ok = add_local(c, n->as.for_each.name, n->token, &value_slot);
+            else if (ok) ok = add_global(c, n->as.for_each.name, n->token, &value_slot) &&
+                              emit_slot(c, OP_DEFINE_GLOBAL, value_slot, n->token);
+            loop->continue_variable_count = c->in_function ? c->local_count : c->global_count;
+            loop->continue_to_increment = true;
+            loop->start = c->chunk->count;
+            size_t exit = 0;
+            if (ok) ok = c->in_function
+                ? emit_slot(c, OP_GET_LOCAL, index_slot, n->token) &&
+                  emit_slot(c, OP_GET_LOCAL, count_slot, n->token)
+                : emit_slot(c, OP_GET_GLOBAL, index_slot, n->token) &&
+                  emit_slot(c, OP_GET_GLOBAL, count_slot, n->token);
+            if (ok) ok = emit(c, OP_LESS, n->token) &&
+                         emit_jump(c, OP_JUMP_IF_FALSE, n->token, &exit);
+            if (ok) ok = c->in_function
+                ? emit_slot(c, OP_GET_LOCAL, array_slot, n->token) &&
+                  emit_slot(c, OP_GET_LOCAL, index_slot, n->token)
+                : emit_slot(c, OP_GET_GLOBAL, array_slot, n->token) &&
+                  emit_slot(c, OP_GET_GLOBAL, index_slot, n->token);
+            if (ok) ok = emit(c, OP_GET_INDEX, n->token) &&
+                         (c->in_function
+                            ? emit_slot(c, OP_SET_LOCAL, value_slot, n->token)
+                            : emit_slot(c, OP_SET_GLOBAL, value_slot, n->token)) &&
+                         emit(c, OP_POP, n->token) &&
+                         statement(c, n->as.for_each.body);
+            for (size_t i = 0; ok && i < loop->continue_count; ++i)
+                ok = patch_jump(c, loop->continue_jumps[i], n->token);
+            if (ok) ok = c->in_function
+                ? emit_slot(c, OP_GET_LOCAL, index_slot, n->token)
+                : emit_slot(c, OP_GET_GLOBAL, index_slot, n->token);
+            if (ok) ok = chunk_write_constant(c->chunk, value_number(1), n->token.line) ||
+                         fail(c, n->token, "cannot add iterator increment constant");
+            if (ok) ok = emit(c, OP_ADD, n->token) &&
+                         (c->in_function
+                            ? emit_slot(c, OP_SET_LOCAL, index_slot, n->token)
+                            : emit_slot(c, OP_SET_GLOBAL, index_slot, n->token)) &&
+                         emit(c, OP_POP, n->token) &&
+                         emit_loop(c, loop->start, n->token) &&
+                         patch_jump(c, exit, n->token);
+            --c->loop_depth;
+            bool cleaned = leave_scope(c, n->token);
+            for (size_t i = 0; ok && cleaned && i < loop->break_count; ++i)
+                ok = patch_jump(c, loop->break_jumps[i], n->token);
+            return ok && cleaned;
+        }
         case N_BREAK: {
             if (!c->loop_depth) return fail(c, n->token, "break outside loop");
             Loop *loop = &c->loops[c->loop_depth - 1];
