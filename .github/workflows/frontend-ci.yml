@@ -1,7 +1,7 @@
 name: Compiler frontend CI
 on:
   push:
-    branches: [main, feature/compiler-frontend-completion]
+    branches: [main, development/ai]
   pull_request:
     branches: [main]
 jobs:
