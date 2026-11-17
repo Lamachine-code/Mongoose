@@ -15,7 +15,8 @@ static int precedence(TokenType t){switch(t){case T_ASSIGN:return 1;case T_OR:ca
 static Node* expression(Parser*p,int min);
 static Node* primary(Parser*p){Token t=pop(p);Node*n;switch(t.type){case T_NUMBER:n=newnode(N_NUMBER,t);if(n)n->as.number=strtod(t.start,NULL);return n;case T_STRING:return newnode(N_STRING,t);case T_TRUE:case T_FALSE:n=newnode(N_BOOL,t);if(n)n->as.boolean=t.type==T_TRUE;return n;case T_NIL:return newnode(N_NIL,t);case T_IDENT:n=newnode(N_IDENT,t);if(n)n->as.name=nm(t);return n;case T_LBRACKET:{
  n=newnode(N_ARRAY,t);if(!n)return NULL;
- if(pk(p).type!=T_RBRACKET){
+ if(eat(p,T_COLON)){n->kind=N_DICTIONARY;}
+ else if(pk(p).type!=T_RBRACKET){
   Node*first=expression(p,1);
   if(!first){drop(n);return NULL;}
   if(eat(p,T_COLON)){
