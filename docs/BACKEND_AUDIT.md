@@ -4,7 +4,7 @@
 
 - Tagged runtime values: nil, booleans, numbers, strings and array references.
 - Chunk-owned immutable string constants and VM-owned concatenation results.
-- VM-owned dynamic arrays with indexed reads/writes and reference semantics.
+- VM-owned dynamic arrays with indexed reads/writes and reference semantics, including nested arrays and chained indexed reads/writes.
 - Bytecode chunks with source-line metadata, a constant pool and function metadata.
 - Stack-based VM with arithmetic, comparisons, global variables and conditional jumps.
 - AST-to-bytecode compilation and executable CLI pipeline.
@@ -37,7 +37,7 @@
 - `while condition do ... stop` loops with nested-loop support.
 - `break` exits the innermost loop; `continue` jumps to its next condition check.
 - Semantic analysis rejects `break` and `continue` outside loops.
-- `new_array()`, indexed array reads, indexed writes and array arguments passed by reference.
+- `new_array()`, indexed array reads, indexed writes, nested arrays (`matrix[row][column]`) and array arguments passed by reference.
 
 ## Runtime architecture
 
@@ -79,6 +79,7 @@ discarded and the right operand is evaluated.
 - Short-circuit `and` and `or`, using division by zero as a guard to prove the skipped operand is not evaluated.
 - `break` and `continue`, nested-loop targeting, local cleanup on loop exit, and semantic rejection outside loops.
 - Inclusive `for` loops, one-time bound evaluation, loop-variable scope, and `continue` increment behavior.
+- Nested-array reads, nested indexed assignment, and aliasing between an inner array and its containing array.
 
 Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Each compiler loop context records its condition target, lexical scope depth, variable-slot boundary and pending `break` jumps. A `break` emits a forward jump patched to the end of the innermost loop; a `continue` emits a backward jump to that loop's condition.
 
