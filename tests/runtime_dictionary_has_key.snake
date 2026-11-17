@@ -1,0 +1,6 @@
+let person = ["name": "Alice"]
+print(has_key(person, "name"))
+print(has_key(person, "missing"))
+person["age"] = 25
+print(has_key(person, "age"))
+print(length(keys(person)))
