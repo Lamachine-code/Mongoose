@@ -1,0 +1,8 @@
+let numbers = [10, 20]
+numbers[0] += 5
+numbers[1] *= 3
+let person = ["age": 20]
+person["age"] += 2
+print(numbers[0])
+print(numbers[1])
+print(person["age"])
