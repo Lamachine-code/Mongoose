@@ -31,7 +31,7 @@ parameters     = IDENTIFIER, { ",", IDENTIFIER } ;
 
 statement      = ifStmt | whileStmt | forStmt | breakStmt | continueStmt | returnStmt | assignmentOrExpression ;
 whileStmt      = "while", expression, "do", separators, block, "stop" ;
-forStmt        = "for", IDENTIFIER, "=", expression, "to", expression, "do", separators, block, "stop" ;
+forStmt        = "for", IDENTIFIER, ( "=", expression, "to", expression | "in", expression ), "do", separators, block, "stop" ;
 ifStmt         = "if", expression, "then", separators, block,
                  [ "else", separators, block ], "stop" ;
 returnStmt     = "return", expression ;
@@ -73,7 +73,7 @@ separators     = { NEWLINE } ;
   expected number of arguments.
 - `return` is valid only inside a function.
 - `break` and `continue` are valid only inside `while` or `for` loops; they target the innermost loop.
-- `for` uses an inclusive upper bound; start and end expressions are evaluated once, and its variable is scoped to the loop.
+- Numeric `for` uses an inclusive upper bound; start and end expressions are evaluated once, and its variable is scoped to the loop.\n- Collection `for ... in ...` iterates over an array snapshot of values or a dictionary snapshot of keys, preserving array order and dictionary insertion order. The collection expression is evaluated once; changes to the original collection during iteration do not change the iteration snapshot. The loop variable is scoped to the loop.
 - `nil` is distinct from `false`, `0` and the empty string; `==` and `!=` compare it by value type.
 - `length(value)` returns an array's element count, a dictionary's distinct-key count or a string's UTF-8 code-point count. Other value types cause a runtime type error.\n- `keys(dictionary)` and `values(dictionary)` return arrays in dictionary insertion order. `has_key(dictionary, key)` returns a boolean and requires a string key. These builtins require a dictionary argument.
 - `string[index]` returns one complete UTF-8 code point as a string. `substring(string, start, length)` extracts a range of code points; invalid indices and ranges are runtime errors. Invalid UTF-8 encountered by these operations is a runtime error.
