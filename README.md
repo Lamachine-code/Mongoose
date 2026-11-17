@@ -56,7 +56,7 @@ Output:
 120
 ```
 
-Closures, modules and garbage collection are not implemented yet. The frontend checker is retained separately
+Closures and modules are not implemented yet. The VM includes a tracing mark-and-sweep garbage collector for arrays, strings and dictionaries. The frontend checker is retained separately
 as `mongoose_check`, so the broader parser and semantic regression suite can
 continue to validate syntax that the runtime compiler has not implemented.
 
