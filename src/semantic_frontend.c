@@ -155,6 +155,10 @@ static bool sem(Node *node, Scope *scope, bool in_function,
                 if (!sem(node->as.call.args[i], scope, in_function, loop_depth, error))
                     return false;
             return true;
+        case N_ARRAY:
+            for (size_t i = 0; i < node->as.list.count; ++i)
+                if (!sem(node->as.list.items[i], scope, in_function, loop_depth, error)) return false;
+            return true;
         case N_UNARY:
             return sem(node->as.unary.operand, scope, in_function, loop_depth, error);
         case N_BINARY:
