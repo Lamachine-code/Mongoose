@@ -75,14 +75,15 @@ separators     = { NEWLINE } ;
 - `break` and `continue` are valid only inside `while` or `for` loops; they target the innermost loop.
 - `for` uses an inclusive upper bound; start and end expressions are evaluated once, and its variable is scoped to the loop.
 - `nil` is distinct from `false`, `0` and the empty string; `==` and `!=` compare it by value type.
-- `length(value)` returns an array's element count or a string's UTF-8 code-point count. Other value types cause a runtime type error.
+- `length(value)` returns an array's element count, a dictionary's distinct-key count or a string's UTF-8 code-point count. Other value types cause a runtime type error.
 - `string[index]` returns one complete UTF-8 code point as a string. `substring(string, start, length)` extracts a range of code points; invalid indices and ranges are runtime errors. Invalid UTF-8 encountered by these operations is a runtime error.
 - `push(array, value)` appends one value and returns the resulting array length. `pop(array)` removes and returns the last value; popping an empty array returns `nil`. Both require an array.
 - Array literals use square brackets: `[10, 20, 30]`; the empty literal `[]` is valid. Elements are expressions and may themselves be arrays.
-- Arrays may contain arrays. Chained indexing such as `matrix[row][column]` supports nested reads and assignments; nested arrays retain reference semantics.\n- Dictionaries use string-literal keys, for example `["name": "Alice"]`; `[:]` creates an empty dictionary. Indexed reads of absent keys return `nil`, and indexed assignment inserts or replaces a key. Duplicate keys in a literal keep the last value. Dictionaries retain reference semantics and may be nested in arrays or other dictionaries. `length(dictionary)` returns its number of distinct keys.
+- Arrays may contain arrays. Chained indexing such as `matrix[row][column]` supports nested reads and assignments; nested arrays retain reference semantics. 
+- Dictionaries use string-literal keys, for example `["name": "Alice"]`; `[:]` creates an empty dictionary. Indexed reads of absent keys return `nil`, and indexed assignment inserts or replaces a key. Duplicate keys in a literal keep the last value. Dictionaries retain reference semantics and may be nested in arrays or other dictionaries. `length(dictionary)` returns its number of distinct keys.
 - This baseline has no static type system; it does not infer or enforce
   numeric/boolean/array types.
 
 ## Open design boundary
 
-Array literals are supported by the parser, compiler and VM. Classes, imports and user-defined types are not currently part of the language.
+Array and dictionary literals are supported by the parser, compiler and VM. Classes, imports and user-defined types are not currently part of the language.
