@@ -81,7 +81,7 @@ static bool sem(Node *node, Scope *scope, bool in_function,
         case N_IDENT:
             if (!lookup(scope, node->as.name)) {
                 snprintf(error->message, sizeof error->message,
-                         "undefined identifier '%.*s'",
+                         "undefined variable '%.*s'",
                          (int)node->as.name.length, node->as.name.name);
                 error->line = node->token.line; error->column = node->token.column;
                 return false;
@@ -205,8 +205,18 @@ static bool sem(Node *node, Scope *scope, bool in_function,
             }
             if (node->as.assign.target->kind == N_IDENT &&
                 lookup(scope, node->as.assign.target->as.name) != 1) {
-                snprintf(error->message, sizeof error->message, "assignment to undefined variable");
-                error->line = node->token.line; error->column = node->token.column;
+                Name name = node->as.assign.target->as.name;
+                int kind = lookup(scope, name);
+                if (kind == 2)
+                    snprintf(error->message, sizeof error->message,
+                             "cannot assign to function '%.*s'",
+                             (int)name.length, name.name);
+                else
+                    snprintf(error->message, sizeof error->message,
+                             "assignment to undefined variable '%.*s'",
+                             (int)name.length, name.name);
+                error->line = node->as.assign.target->token.line;
+                error->column = node->as.assign.target->token.column;
                 return false;
             }
             return sem(node->as.assign.target, scope, in_function, loop_depth, error) &&
