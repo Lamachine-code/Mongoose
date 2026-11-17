@@ -232,7 +232,9 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
 
     size_t ip = 0;
     while (ip < chunk->count) {
+        size_t instruction_offset = ip;
         uint8_t instruction = chunk->code[ip++];
+        vm->error_line = chunk->lines ? chunk->lines[instruction_offset] : 0;
         Value a, b;
         double left, right;
 
