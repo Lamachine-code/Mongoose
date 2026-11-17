@@ -1,0 +1,3 @@
+function work()
+stop
+work = 3
