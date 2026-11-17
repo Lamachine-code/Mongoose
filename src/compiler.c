@@ -246,46 +246,46 @@ static bool expression(Compiler*c,Node*n) {
         case N_CALL: {
             if(n->as.call.name.length==9&&!memcmp(n->as.call.name.name,"new_array",9)) {
                 if(n->as.call.arg_count!=0)
-                    return fail(c,n->token,"new_array() expects no arguments");
+                    return fail_arity(c,n->token,n->as.call.name,0,n->as.call.arg_count);
                 return emit(c,OP_NEW_ARRAY,n->token);
             }
             if(n->as.call.name.length==5&&!memcmp(n->as.call.name.name,"print",5)) {
-                if(n->as.call.arg_count!=1)return fail(c,n->token,"print() expects one argument");
+                if(n->as.call.arg_count!=1)return fail_arity(c,n->token,n->as.call.name,1,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&emit(c,OP_PRINT,n->token)&&emit(c,OP_NIL,n->token);
             }            if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"length",6)) {
-                if(n->as.call.arg_count!=1)return fail(c,n->token,"length() expects one argument");
+                if(n->as.call.arg_count!=1)return fail_arity(c,n->token,n->as.call.name,1,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&emit(c,OP_LENGTH,n->token);
             }
             if(n->as.call.name.length==4&&!memcmp(n->as.call.name.name,"push",4)) {
-                if(n->as.call.arg_count!=2)return fail(c,n->token,"push() expects two arguments");
+                if(n->as.call.arg_count!=2)return fail_arity(c,n->token,n->as.call.name,2,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_ARRAY_PUSH,n->token);
             }
             if(n->as.call.name.length==3&&!memcmp(n->as.call.name.name,"pop",3)) {
-                if(n->as.call.arg_count!=1)return fail(c,n->token,"pop() expects one argument");
+                if(n->as.call.arg_count!=1)return fail_arity(c,n->token,n->as.call.name,1,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&emit(c,OP_ARRAY_POP,n->token);
             }
             if(n->as.call.name.length==4&&!memcmp(n->as.call.name.name,"keys",4)) {
-                if(n->as.call.arg_count!=1)return fail(c,n->token,"keys() expects one argument");
+                if(n->as.call.arg_count!=1)return fail_arity(c,n->token,n->as.call.name,1,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&emit(c,OP_DICTIONARY_KEYS,n->token);
             }
             if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"values",6)) {
-                if(n->as.call.arg_count!=1)return fail(c,n->token,"values() expects one argument");
+                if(n->as.call.arg_count!=1)return fail_arity(c,n->token,n->as.call.name,1,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&emit(c,OP_DICTIONARY_VALUES,n->token);
             }
             if(n->as.call.name.length==7&&!memcmp(n->as.call.name.name,"has_key",7)) {
-                if(n->as.call.arg_count!=2)return fail(c,n->token,"has_key() expects two arguments");
+                if(n->as.call.arg_count!=2)return fail_arity(c,n->token,n->as.call.name,2,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_DICTIONARY_HAS_KEY,n->token);
             }
             if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"remove",6)) {
-                if(n->as.call.arg_count!=2)return fail(c,n->token,"remove() expects two arguments");
+                if(n->as.call.arg_count!=2)return fail_arity(c,n->token,n->as.call.name,2,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_ARRAY_REMOVE,n->token);
             }
             if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"delete",6)) {
-                if(n->as.call.arg_count!=2)return fail(c,n->token,"delete() expects two arguments");
+                if(n->as.call.arg_count!=2)return fail_arity(c,n->token,n->as.call.name,2,n->as.call.arg_count);
                 return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_DICTIONARY_DELETE,n->token);
             }
             if(n->as.call.name.length==9&&!memcmp(n->as.call.name.name,"substring",9)) {
-                if(n->as.call.arg_count!=3)return fail(c,n->token,"substring() expects three arguments");
+                if(n->as.call.arg_count!=3)return fail_arity(c,n->token,n->as.call.name,3,n->as.call.arg_count);
                 for(size_t i=0;i<3;i++)if(!expression(c,n->as.call.args[i]))return false;
                 return emit(c,OP_SUBSTRING,n->token);
             }
