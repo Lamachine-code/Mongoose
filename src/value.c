@@ -32,6 +32,11 @@ Value value_string(String *string) {
     return value;
 }
 
+Value value_dictionary(Dictionary *dictionary) {
+    Value value = {.type = VALUE_DICTIONARY, .as.dictionary = dictionary};
+    return value;
+}
+
 String *string_new(const char *chars, size_t length) {
     if (length == (size_t)-1) return NULL;
     String *string = malloc(sizeof *string);
@@ -56,12 +61,19 @@ void value_array_free(Array *array) {
     free(array);
 }
 
+void value_dictionary_free(Dictionary *dictionary) {
+    if (!dictionary) return;
+    free(dictionary->entries);
+    free(dictionary);
+}
+
 void value_print(FILE *stream, Value value) {
     switch (value.type) {
         case VALUE_NIL: fputs("nil", stream); break;
         case VALUE_BOOL: fputs(value.as.boolean ? "true" : "false", stream); break;
         case VALUE_NUMBER: fprintf(stream, "%.15g", value.as.number); break;
         case VALUE_ARRAY: fputs("<array>", stream); break;
+        case VALUE_DICTIONARY: fputs("<dictionary>", stream); break;
         case VALUE_STRING:
             if (value.as.string && value.as.string->length)
                 fwrite(value.as.string->chars, 1, value.as.string->length, stream);
