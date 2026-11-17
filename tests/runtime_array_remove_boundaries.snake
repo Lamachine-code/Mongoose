@@ -1,0 +1,5 @@
+let values = [10, 20, 30]
+print(remove(values, 0))
+print(remove(values, 1))
+print(remove(values, 0))
+print(length(values))
