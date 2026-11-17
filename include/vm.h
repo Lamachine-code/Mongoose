@@ -9,7 +9,7 @@
 typedef enum {
  VM_OK, VM_STACK_OVERFLOW, VM_STACK_UNDERFLOW, VM_INVALID_BYTECODE,
  VM_TYPE_ERROR, VM_DIVISION_BY_ZERO, VM_UNDEFINED_GLOBAL,
- VM_CALL_OVERFLOW, VM_ARITY_ERROR, VM_ARRAY_REQUIRED, VM_INDEX_ERROR, VM_OUT_OF_MEMORY, VM_UTF8_ERROR
+ VM_CALL_OVERFLOW, VM_ARITY_ERROR, VM_ARRAY_REQUIRED, VM_INDEX_ERROR, VM_OUT_OF_MEMORY, VM_UTF8_ERROR, VM_DICTIONARY_REQUIRED
 } VMResult;
 typedef struct {
  size_t return_ip;
@@ -20,7 +20,7 @@ typedef struct {
  Value globals[VM_GLOBAL_MAX]; bool global_defined[VM_GLOBAL_MAX];
  Value result;
  Array **arrays; size_t array_count, array_capacity;
- String **strings; size_t string_count, string_capacity;
+ String **strings; size_t string_count, string_capacity;\n Dictionary **dictionaries; size_t dictionary_count, dictionary_capacity;
  CallFrame frames[VM_FRAMES_MAX]; size_t frame_count;
 } VM;
 void vm_init(VM *vm);
