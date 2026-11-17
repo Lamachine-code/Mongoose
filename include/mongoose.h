@@ -19,7 +19,7 @@ void free_tokens(TokenArray *tokens);
 
 typedef enum {
  N_NUMBER, N_BOOL, N_NIL, N_STRING, N_IDENT, N_UNARY, N_BINARY, N_VAR, N_BLOCK,
- N_IF, N_WHILE, N_FOR, N_BREAK, N_CONTINUE, N_FUNCTION, N_CALL, N_INDEX, N_RETURN, N_ASSIGN, N_PROGRAM
+ N_IF, N_WHILE, N_FOR, N_BREAK, N_CONTINUE, N_FUNCTION, N_CALL, N_ARRAY, N_INDEX, N_RETURN, N_ASSIGN, N_PROGRAM
 } NodeKind;
 typedef struct Node Node;
 typedef struct { const char *name; size_t length; } Name;
