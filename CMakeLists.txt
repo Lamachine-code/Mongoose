@@ -279,3 +279,9 @@ set_tests_properties(runtime_compound_index_evaluates_target_once PROPERTIES PAS
 add_test(NAME semantic_rejects_invalid_compound_assignment_target COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/compound_assignment_invalid_target.snake)
 set_tests_properties(semantic_rejects_invalid_compound_assignment_target PROPERTIES WILL_FAIL TRUE)
 add_test(NAME runtime_error_reports_source_line COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_error_reports_source_line.snake -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_error.cmake)
+
+
+# Diagnostic phases must remain distinguishable and include exact source locations.
+add_test(NAME diagnostic_identifies_lexical_errors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_lexical.snake "-DEXPECTED=:1:13: lexical error:" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+add_test(NAME diagnostic_identifies_syntax_errors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_syntax.snake "-DEXPECTED=:1:12: syntax error:" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+add_test(NAME diagnostic_identifies_semantic_errors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_semantic.snake "-DEXPECTED=:1:7: semantic error:" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
