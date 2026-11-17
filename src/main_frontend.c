@@ -37,7 +37,7 @@ static const char *vm_error(VMResult result) {
   case VM_UNDEFINED_GLOBAL:return "undefined global variable";
   case VM_CALL_OVERFLOW:return "maximum call depth exceeded";
   case VM_ARITY_ERROR:return "incorrect function argument count";
-  case VM_ARRAY_REQUIRED:return "indexed value is not an array, dictionary or string";
+  case VM_ARRAY_REQUIRED:return "operation requires an array";
   case VM_DICTIONARY_REQUIRED:return "operation requires a dictionary";
   case VM_STRING_REQUIRED:return "dictionary key must be a string";
   case VM_INDEXABLE_REQUIRED:return "indexed value must be an array, dictionary or string";
