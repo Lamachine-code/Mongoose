@@ -16,6 +16,7 @@ typedef struct {
  Value stack[VM_STACK_MAX]; size_t stack_count;
  Value globals[VM_GLOBAL_MAX]; bool global_defined[VM_GLOBAL_MAX];
  Value result;
+ int error_line;
  Array **arrays; size_t array_count, array_capacity;
  String **strings; size_t string_count, string_capacity;
  Dictionary **dictionaries; size_t dictionary_count, dictionary_capacity;
