@@ -9,7 +9,7 @@ typedef enum {
  T_AND, T_OR, T_NOT,
  T_PLUS, T_MINUS, T_STAR, T_SLASH, T_FLOOR_DIV, T_PERCENT, T_POWER,
  T_ASSIGN, T_EQ, T_NE, T_LT, T_LE, T_GT, T_GE,
- T_LPAREN, T_RPAREN, T_LBRACKET, T_RBRACKET, T_COMMA
+ T_LPAREN, T_RPAREN, T_LBRACKET, T_RBRACKET, T_COMMA, T_COLON
 } TokenType;
 typedef struct { TokenType type; const char *start; size_t length; int line, column; } Token;
 typedef struct { Token *items; size_t count; } TokenArray;
@@ -19,7 +19,7 @@ void free_tokens(TokenArray *tokens);
 
 typedef enum {
  N_NUMBER, N_BOOL, N_NIL, N_STRING, N_IDENT, N_UNARY, N_BINARY, N_VAR, N_BLOCK,
- N_IF, N_WHILE, N_FOR, N_BREAK, N_CONTINUE, N_FUNCTION, N_CALL, N_ARRAY, N_INDEX, N_RETURN, N_ASSIGN, N_PROGRAM
+ N_IF, N_WHILE, N_FOR, N_BREAK, N_CONTINUE, N_FUNCTION, N_CALL, N_ARRAY, N_DICTIONARY, N_INDEX, N_RETURN, N_ASSIGN, N_PROGRAM
 } NodeKind;
 typedef struct Node Node;
 typedef struct { const char *name; size_t length; } Name;
