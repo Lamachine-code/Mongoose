@@ -26,7 +26,7 @@ The current executable subset supports:
 - Conditional `if/else/stop` blocks.
 - `while condition do ... stop` loops, including nested loops and loops inside functions.
 - `break` exits the innermost loop; `continue` starts its next iteration.
-- Inclusive `for variable = start to end do ... stop` loops.
+- Inclusive numeric `for variable = start to end do ... stop` loops, plus `for variable in collection do ... stop` loops over array values or dictionary keys.
 - Builtin `print(value)`.
 - User-defined functions, positional parameters, local variables, calls,
   return values and recursion.
@@ -87,5 +87,5 @@ print(length(person))
 ```
 
 Reading a missing key returns `nil`. Assigning to an existing key replaces
-its value; assigning to a missing key inserts it. Updating an existing key preserves its insertion position. `keys(person)` and `values(person)` return arrays in insertion order; `has_key(person, "name")` checks membership. Dictionaries are reference
+its value; assigning to a missing key inserts it. Updating an existing key preserves its insertion position. `keys(person)` and `values(person)` return arrays in insertion order; `has_key(person, "name")` checks membership. `for key in person do ... stop` iterates dictionary keys in insertion order. Dictionaries are reference
 values and can be nested in arrays, dictionaries and function arguments.
