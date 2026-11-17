@@ -8,7 +8,7 @@ typedef enum {
  T_LET, T_FUNCTION, T_IF, T_THEN, T_ELSE, T_STOP, T_WHILE, T_DO, T_FOR, T_TO, T_IN, T_BREAK, T_CONTINUE, T_TRUE, T_FALSE, T_NIL, T_RETURN,
  T_AND, T_OR, T_NOT,
  T_PLUS, T_MINUS, T_STAR, T_SLASH, T_FLOOR_DIV, T_PERCENT, T_POWER,
- T_ASSIGN, T_EQ, T_NE, T_LT, T_LE, T_GT, T_GE,
+ T_ASSIGN, T_PLUS_EQUAL, T_MINUS_EQUAL, T_STAR_EQUAL, T_SLASH_EQUAL, T_EQ, T_NE, T_LT, T_LE, T_GT, T_GE,
  T_LPAREN, T_RPAREN, T_LBRACKET, T_RBRACKET, T_COMMA, T_COLON
 } TokenType;
 typedef struct { TokenType type; const char *start; size_t length; int line, column; } Token;
