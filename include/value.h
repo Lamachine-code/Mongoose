@@ -6,8 +6,8 @@
 #include <stdio.h>
 
 typedef struct Value Value;
-typedef struct String { char *chars; size_t length; } String;
-typedef struct Array { Value *items; size_t count, capacity; } Array;
+typedef struct String { char *chars; size_t length; bool marked; } String;
+typedef struct Array { Value *items; size_t count, capacity; bool marked; } Array;
 typedef struct Dictionary Dictionary;
 typedef enum { VALUE_NIL, VALUE_BOOL, VALUE_NUMBER, VALUE_ARRAY, VALUE_STRING, VALUE_DICTIONARY } ValueType;
 
@@ -23,7 +23,7 @@ struct Value {
 };
 
 typedef struct DictionaryEntryValue { String *key; Value value; } DictionaryEntryValue;
-typedef struct Dictionary { DictionaryEntryValue *entries; size_t count, capacity; } Dictionary;
+typedef struct Dictionary { DictionaryEntryValue *entries; size_t count, capacity; bool marked; } Dictionary;
 
 Value value_nil(void);
 Value value_bool(bool value);
