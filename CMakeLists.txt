@@ -14,9 +14,17 @@ if(UNIX)
  target_link_libraries(mongoose_vm PUBLIC m)
 endif()
 
+set(MONGOOSE_ICON_RESOURCE "")
+if(WIN32)
+  set(MONGOOSE_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/mongoose.rc")
+  set(MONGOOSE_CHECK_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/assets/mongoose_check.rc")
+endif()
+
 add_executable(mongoose
  src/main_frontend.c src/lexer_frontend.c src/parser_frontend.c
- src/semantic_frontend.c src/compiler.c)
+ src/semantic_frontend.c src/compiler.c
+ ${MONGOOSE_ICON_RESOURCE}
+)
 target_include_directories(mongoose PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(mongoose PRIVATE mongoose_vm)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -24,7 +32,9 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 add_executable(mongoose_check
- src/main_check.c src/lexer_frontend.c src/parser_frontend.c src/semantic_frontend.c)
+ src/main_check.c src/lexer_frontend.c src/parser_frontend.c src/semantic_frontend.c
+ ${MONGOOSE_CHECK_ICON_RESOURCE}
+)
 target_include_directories(mongoose_check PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
  target_compile_options(mongoose_check PRIVATE -Wall -Wextra -Wpedantic -Werror)
