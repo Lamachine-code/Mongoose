@@ -25,7 +25,7 @@
 
 ## Executable source subset
 
-- Top-level `let` declarations, global reads and assignments.
+- Top-level `let` declarations, global reads and assignments, including `+=`, `-=`, `*=` and `/=` for variables and indexed collection values.
 - Numeric, boolean, nil and string literals.
 - Arithmetic: `+`, `-`, `*`, `/`, `//`, `%`, `^`.
 - Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`.
@@ -84,6 +84,7 @@ discarded and the right operand is evaluated.
 - Nested-array reads, nested indexed assignment, and aliasing between an inner array and its containing array.
 - Array literals: basic construction, nested literals, empty literals, and expression-valued elements. 
 - Dictionaries: literal construction, empty dictionaries, reads, writes, missing keys, duplicate keys, nested collections, function aliasing, non-string key rejection, key/value extraction, membership and builtin argument validation.
+- Compound assignments: all four arithmetic operators on variables, array elements and dictionary values; indexed target expressions are evaluated once.
 
 Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Each compiler loop context records its condition target, lexical scope depth, variable-slot boundary and pending `break` jumps. A `break` emits a forward jump patched to the end of the innermost loop; a `continue` emits a backward jump to that loop's condition.
 
@@ -92,3 +93,5 @@ Before either jump, the compiler emits cleanup for variables introduced since th
 
 A numeric `for` loop creates a lexical scope containing its iteration variable and a hidden upper-bound slot. Both range expressions are evaluated once. The condition uses an inclusive comparison. `continue` jumps to the increment sequence; `break` exits and cleans up the entire loop scope.
 \n\nA collection `for-in` loop evaluates its collection once and emits `OP_ITER_INIT`, which creates a VM-owned snapshot array. Arrays are copied as values; dictionaries are copied as their keys in insertion order. The compiler stores the snapshot, current index and snapshot length in hidden scoped slots, then uses ordinary indexed reads and loop branches. Mutating the original collection does not alter the active iteration.\n\n\n`OP_ARRAY_REMOVE` validates a non-negative integer index, returns the removed value and compacts the array in place. `OP_DICTIONARY_DELETE` validates the dictionary and string key, removes a matching entry by shifting subsequent entries, preserves the relative insertion order of the remaining keys, and returns a boolean indicating whether removal occurred.\n
+
+Compound assignment lowering reuses the existing arithmetic opcodes. For a variable, the compiler loads its current value, evaluates the right-hand expression, applies the arithmetic opcode and stores the result. For an indexed target, it emits `OP_GET_INDEX_KEEP`: the VM reads the current element while retaining the collection and index on the operand stack. The arithmetic result can then be committed with the existing `OP_SET_INDEX`. This ensures side-effecting collection/index expressions execute exactly once.
