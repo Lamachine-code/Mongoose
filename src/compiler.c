@@ -215,6 +215,13 @@ static bool expression(Compiler*c,Node*n) {
             if(n->as.unary.op.type==T_NOT)return emit(c,OP_NOT,n->token);
             return fail(c,n->token,"unsupported unary operator");
         case N_BINARY:return binary(c,n);
+        case N_ARRAY:
+            if (!emit(c, OP_NEW_ARRAY, n->token)) return false;
+            for (size_t i = 0; i < n->as.list.count; ++i) {
+                if (!expression(c, n->as.list.items[i]) ||
+                    !emit(c, OP_ARRAY_LITERAL_ADD, n->token)) return false;
+            }
+            return true;
         case N_INDEX:
             return expression(c,n->as.index.target) &&
                    expression(c,n->as.index.index) &&
