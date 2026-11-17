@@ -1,0 +1,3 @@
+let settings = ["mode": "light", "mode": "dark"]
+print(settings["mode"])
+print(length(settings))
