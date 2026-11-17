@@ -1,0 +1,12 @@
+function make_values()
+    return [10, 20]
+stop
+
+function append_value(items)
+    push(items, 30)
+    return items
+stop
+
+let values = append_value(make_values())
+print(length(values))
+print(values[2])
