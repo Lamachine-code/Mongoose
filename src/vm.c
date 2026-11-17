@@ -5,7 +5,7 @@
 #include <string.h>
 
 void vm_init(VM *vm) {
-    if (vm) *vm = (VM){0};
+    if (vm) { *vm = (VM){0}; vm->gc_threshold = 64; }
 }
 
 void vm_free(VM *vm) {
@@ -233,6 +233,116 @@ static bool dictionary_delete(Dictionary *dictionary, String *key) {
     return false;
 }
 
+
+/* Marking only flips flags; the repeated scan avoids a temporary worklist
+   allocation and handles cyclic arrays/dictionaries safely. */
+static bool mark_value(Value value) {
+    switch (value.type) {
+        case VALUE_ARRAY:
+            if (value.as.array && !value.as.array->marked) {
+                value.as.array->marked = true;
+                return true;
+            }
+            break;
+        case VALUE_STRING:
+            if (value.as.string && !value.as.string->marked) {
+                value.as.string->marked = true;
+                return true;
+            }
+            break;
+        case VALUE_DICTIONARY:
+            if (value.as.dictionary && !value.as.dictionary->marked) {
+                value.as.dictionary->marked = true;
+                return true;
+            }
+            break;
+        default:
+            break;
+    }
+    return false;
+}
+
+static size_t object_count(const VM *vm) {
+    size_t total = vm->array_count;
+    if (vm->string_count > SIZE_MAX - total) return SIZE_MAX;
+    total += vm->string_count;
+    if (vm->dictionary_count > SIZE_MAX - total) return SIZE_MAX;
+    return total + vm->dictionary_count;
+}
+
+static void collect_garbage(VM *vm, const Chunk *chunk) {
+    for (size_t i = 0; i < vm->stack_count; ++i)
+        (void)mark_value(vm->stack[i]);
+    for (size_t i = 0; i < VM_GLOBAL_MAX; ++i)
+        if (vm->global_defined[i]) (void)mark_value(vm->globals[i]);
+    (void)mark_value(vm->result);
+    for (size_t i = 0; i < chunk->constant_count; ++i)
+        (void)mark_value(chunk->constants[i]);
+
+    bool changed;
+    do {
+        changed = false;
+        for (size_t i = 0; i < vm->array_count; ++i) {
+            Array *array = vm->arrays[i];
+            if (!array->marked) continue;
+            for (size_t j = 0; j < array->count; ++j)
+                if (mark_value(array->items[j])) changed = true;
+        }
+        for (size_t i = 0; i < vm->dictionary_count; ++i) {
+            Dictionary *dictionary = vm->dictionaries[i];
+            if (!dictionary->marked) continue;
+            for (size_t j = 0; j < dictionary->count; ++j) {
+                if (dictionary->entries[j].key &&
+                    !dictionary->entries[j].key->marked) {
+                    dictionary->entries[j].key->marked = true;
+                    changed = true;
+                }
+                if (mark_value(dictionary->entries[j].value)) changed = true;
+            }
+        }
+    } while (changed);
+
+    size_t kept = 0;
+    for (size_t i = 0; i < vm->array_count; ++i) {
+        Array *array = vm->arrays[i];
+        if (array->marked) {
+            array->marked = false;
+            vm->arrays[kept++] = array;
+        } else {
+            value_array_free(array);
+        }
+    }
+    vm->array_count = kept;
+
+    kept = 0;
+    for (size_t i = 0; i < vm->dictionary_count; ++i) {
+        Dictionary *dictionary = vm->dictionaries[i];
+        if (dictionary->marked) {
+            dictionary->marked = false;
+            vm->dictionaries[kept++] = dictionary;
+        } else {
+            value_dictionary_free(dictionary);
+        }
+    }
+    vm->dictionary_count = kept;
+
+    kept = 0;
+    for (size_t i = 0; i < vm->string_count; ++i) {
+        String *string = vm->strings[i];
+        if (string->marked) {
+            string->marked = false;
+            vm->strings[kept++] = string;
+        } else {
+            value_string_free(string);
+        }
+    }
+    vm->string_count = kept;
+
+    size_t live = object_count(vm);
+    vm->gc_threshold = live > SIZE_MAX / 2 ? SIZE_MAX : live * 2;
+    if (vm->gc_threshold < 64) vm->gc_threshold = 64;
+    ++vm->gc_runs;
+}
 
 static bool push(VM *vm, Value value) {
     if (vm->stack_count == VM_STACK_MAX) return false;
