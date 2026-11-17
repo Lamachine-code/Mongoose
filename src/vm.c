@@ -519,6 +519,23 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 }
                 break;
             }
+            case OP_GET_INDEX_KEEP: {
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (!push(vm, a) || !push(vm, b)) return VM_STACK_OVERFLOW;
+                size_t index;
+                if (a.type == VALUE_ARRAY && a.as.array) {
+                    if (!array_index(b, &index) || index >= a.as.array->count)
+                        return VM_INDEX_ERROR;
+                    if (!push(vm, a.as.array->items[index])) return VM_STACK_OVERFLOW;
+                } else if (a.type == VALUE_DICTIONARY && a.as.dictionary) {
+                    if (b.type != VALUE_STRING || !b.as.string) return VM_TYPE_ERROR;
+                    if (!push(vm, dictionary_get(a.as.dictionary, b.as.string)))
+                        return VM_STACK_OVERFLOW;
+                } else {
+                    return VM_ARRAY_REQUIRED;
+                }
+                break;
+            }
             case OP_LENGTH: {
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 size_t count;
