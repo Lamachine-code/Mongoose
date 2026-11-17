@@ -1,6 +1,7 @@
 #include "vm.h"
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 void vm_init(VM *vm) {
@@ -86,9 +87,32 @@ static bool utf8_offset(const String *string, size_t character_index,
     return true;
 }
 
+/* Compute a geometrically grown capacity without overflowing either the
+   element count or the byte size passed to the allocator. */
+static bool next_capacity(size_t current, size_t minimum,
+                          size_t element_size, size_t *result) {
+    if (!result || element_size == 0) return false;
+    size_t maximum = SIZE_MAX / element_size;
+    if (minimum > maximum) return false;
+    size_t capacity = current < 8 ? 8 : current;
+    if (capacity > maximum) capacity = maximum;
+    while (capacity < minimum) {
+        if (capacity > maximum / 2) {
+            capacity = minimum;
+            break;
+        }
+        capacity *= 2;
+    }
+    if (capacity < minimum || capacity > maximum) return false;
+    *result = capacity;
+    return true;
+}
+
 static bool register_array(VM *vm, Array *array) {
     if (vm->array_count == vm->array_capacity) {
-        size_t capacity = vm->array_capacity < 8 ? 8 : vm->array_capacity * 2;
+        size_t capacity;
+        if (!next_capacity(vm->array_capacity, vm->array_count + 1,
+                           sizeof *vm->arrays, &capacity)) return false;
         Array **arrays = realloc(vm->arrays, capacity * sizeof *arrays);
         if (!arrays) return false;
         vm->arrays = arrays;
@@ -100,7 +124,9 @@ static bool register_array(VM *vm, Array *array) {
 
 static bool register_string(VM *vm, String *string) {
     if (vm->string_count == vm->string_capacity) {
-        size_t capacity = vm->string_capacity < 8 ? 8 : vm->string_capacity * 2;
+        size_t capacity;
+        if (!next_capacity(vm->string_capacity, vm->string_count + 1,
+                           sizeof *vm->strings, &capacity)) return false;
         String **strings = realloc(vm->strings, capacity * sizeof *strings);
         if (!strings) return false;
         vm->strings = strings;
@@ -122,9 +148,9 @@ static bool array_index(Value value, size_t *index) {
 static bool array_set(Array *array, size_t index, Value value) {
     if (index >= 65536) return false;
     if (index >= array->capacity) {
-        size_t capacity = array->capacity < 8 ? 8 : array->capacity;
-        while (capacity <= index) capacity *= 2;
-        if (capacity > 65536) capacity = 65536;
+        size_t capacity;
+        if (!next_capacity(array->capacity, index + 1, sizeof *array->items,
+                           &capacity) || capacity > 65536) return false;
         Value *items = realloc(array->items, capacity * sizeof *items);
         if (!items) return false;
         array->items = items;
@@ -138,7 +164,9 @@ static bool array_set(Array *array, size_t index, Value value) {
 
 static bool register_dictionary(VM *vm, Dictionary *dictionary) {
     if (vm->dictionary_count == vm->dictionary_capacity) {
-        size_t capacity = vm->dictionary_capacity < 8 ? 8 : vm->dictionary_capacity * 2;
+        size_t capacity;
+        if (!next_capacity(vm->dictionary_capacity, vm->dictionary_count + 1,
+                           sizeof *vm->dictionaries, &capacity)) return false;
         Dictionary **items = realloc(vm->dictionaries, capacity * sizeof *items);
         if (!items) return false;
         vm->dictionaries = items;
@@ -158,7 +186,9 @@ static bool dictionary_set(Dictionary *dictionary, String *key, Value value) {
         }
     }
     if (dictionary->count == dictionary->capacity) {
-        size_t capacity = dictionary->capacity < 8 ? 8 : dictionary->capacity * 2;
+        size_t capacity;
+        if (!next_capacity(dictionary->capacity, dictionary->count + 1,
+                           sizeof *dictionary->entries, &capacity)) return false;
         DictionaryEntryValue *entries = realloc(dictionary->entries, capacity * sizeof *entries);
         if (!entries) return false;
         dictionary->entries = entries;
