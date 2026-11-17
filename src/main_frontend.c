@@ -50,7 +50,7 @@ int main(int argc,char **argv) {
                  diagnostic.message[0]?diagnostic.message:"compilation failed");
  else {
   VMResult result=vm_run(&vm,&chunk);
-  if(result!=VM_OK){fprintf(stderr,"%s: runtime error: %s\n",argv[1],vm_error(result));ok=false;}
+  if(result!=VM_OK){fprintf(stderr,"%s:%d: runtime error: %s\n",argv[1],vm.error_line,vm_error(result));ok=false;}
  }
  vm_free(&vm); chunk_free(&chunk); free_ast(&ast); free_tokens(&tokens); free(source);
  return ok?0:1;
