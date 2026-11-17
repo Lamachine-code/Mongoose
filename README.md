@@ -72,3 +72,20 @@ continue to validate syntax that the runtime compiler has not implemented.
 See [docs/LANGUAGE_GRAMMAR.md](docs/LANGUAGE_GRAMMAR.md),
 [docs/FRONTEND_AUDIT.md](docs/FRONTEND_AUDIT.md), and
 [docs/BACKEND_AUDIT.md](docs/BACKEND_AUDIT.md).
+
+
+## Dictionaries
+
+Mongoose supports dictionaries with string keys. Use `["key": value]` to
+create one and `[:]` for an empty dictionary:
+
+```mongoose
+let person = ["name": "Alice", "age": 25]
+print(person["name"])
+person["age"] = 26
+print(length(person))
+```
+
+Reading a missing key returns `nil`. Assigning to an existing key replaces
+its value; assigning to a missing key inserts it. Dictionaries are reference
+values and can be nested in arrays, dictionaries and function arguments.
