@@ -68,7 +68,7 @@ bool chunk_write_constant(Chunk *chunk, Value value, int line) {
 }
 
 bool chunk_add_function(Chunk *chunk, size_t offset, uint8_t arity,
-                        uint8_t *index) {
+                        const char *name, size_t name_length, uint8_t *index) {
     if (chunk->function_count >= UINT8_MAX) return false;
     if (chunk->function_count == chunk->function_capacity) {
         size_t capacity = chunk->function_capacity < 8
@@ -81,6 +81,6 @@ bool chunk_add_function(Chunk *chunk, size_t offset, uint8_t arity,
     }
     *index = (uint8_t)chunk->function_count;
     chunk->functions[chunk->function_count++] =
-        (FunctionInfo){offset, arity};
+        (FunctionInfo){offset, arity, name, name_length};
     return true;
 }
