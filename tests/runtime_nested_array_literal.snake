@@ -1,0 +1,4 @@
+let matrix = [[1, 2], [3, 4]]
+print(matrix[1][0])
+matrix[0][1] = 8
+print(matrix[0][1])
