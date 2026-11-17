@@ -1,8 +1,6 @@
 # Mongoose language grammar (frontend baseline)
 
-This grammar documents the frontend implemented on the
-`feature/compiler-frontend-completion` branch. It describes the supported
-source syntax; bytecode generation and execution are separate backend work.
+This grammar documents the source syntax currently supported by the Mongoose frontend, compiler and VM.
 
 ## Lexical conventions
 
@@ -85,4 +83,4 @@ separators     = { NEWLINE } ;
 
 ## Open design boundary
 
-The language currently has no array literals, classes, imports or user-defined types in its AST. Nested arrays can be built with `new_array()` and `push()`.
+Array literals are supported by the parser, compiler and VM. Classes, imports and user-defined types are not currently part of the language.
