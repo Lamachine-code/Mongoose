@@ -33,7 +33,7 @@ The current executable subset supports:
 - Short-circuit `and` and `or`.
 - String concatenation with `+`, content-based string equality and printing.
 - `length(value)` returns the number of elements in an array, distinct keys in a dictionary or UTF-8 code points in a string; `string[index]` returns one complete UTF-8 code point; `substring(string, start, length)` extracts a range of code points. Indices are zero-based.
-- Arrays support `push(array, value)`, which appends and returns the new array length, and `pop(array)`, which removes and returns the last element (or `nil` when empty).
+- Arrays support `push(array, value)`, which appends and returns the new array length, and `pop(array)`, which removes and returns the last element (or `nil` when empty).\n- Dictionaries support `keys(dictionary)` and `values(dictionary)`, which return arrays in insertion order, and `has_key(dictionary, key)`, which checks whether a string key exists.
 - Array literals such as `[10, 20, 30]`, including empty literals `[]`, computed elements and nested literals. Arrays retain indexed reads/writes, automatic growth with nil-filled gaps, and reference semantics when passed to functions. The `new_array()` constructor remains available. Multidimensional access and mutation work with chained indexing such as `matrix[row][column]`.
 
 Example:
@@ -87,5 +87,5 @@ print(length(person))
 ```
 
 Reading a missing key returns `nil`. Assigning to an existing key replaces
-its value; assigning to a missing key inserts it. Dictionaries are reference
+its value; assigning to a missing key inserts it. Updating an existing key preserves its insertion position. `keys(person)` and `values(person)` return arrays in insertion order; `has_key(person, "name")` checks membership. Dictionaries are reference
 values and can be nested in arrays, dictionaries and function arguments.
