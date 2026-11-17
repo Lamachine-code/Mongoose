@@ -1,0 +1,6 @@
+let numbers = [10, 20, 30]
+let total = 0
+for number in numbers do
+    total = total + number
+stop
+print(total)
