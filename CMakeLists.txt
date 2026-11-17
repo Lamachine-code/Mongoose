@@ -283,5 +283,7 @@ add_test(NAME runtime_error_reports_source_line COMMAND ${CMAKE_COMMAND} -DPROGR
 
 # Diagnostic phases must remain distinguishable and include exact source locations.
 add_test(NAME diagnostic_identifies_lexical_errors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_lexical.snake "-DEXPECTED=:1:13: lexical error:" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
-add_test(NAME diagnostic_identifies_syntax_errors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_syntax.snake "-DEXPECTED=:1:12: syntax error:" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+add_test(NAME diagnostic_identifies_syntax_errors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_syntax.snake "-DEXPECTED=:1:12: syntax error: expected expression, found end of file" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
 add_test(NAME diagnostic_identifies_semantic_errors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_semantic.snake "-DEXPECTED=:1:7: semantic error:" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+
+add_test(NAME diagnostic_reports_unexpected_token COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose_check> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_unexpected_token.snake "-DEXPECTED=:1:16: syntax error: expected statement separator, found" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
