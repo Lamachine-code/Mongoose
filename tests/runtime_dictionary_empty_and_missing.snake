@@ -1,0 +1,5 @@
+let settings = [:]
+print(length(settings))
+print(settings["missing"])
+settings["theme"] = "dark"
+print(settings["theme"])
