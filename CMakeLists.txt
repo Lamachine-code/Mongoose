@@ -280,6 +280,9 @@ add_test(NAME semantic_rejects_invalid_compound_assignment_target COMMAND mongoo
 set_tests_properties(semantic_rejects_invalid_compound_assignment_target PROPERTIES WILL_FAIL TRUE)
 add_test(NAME runtime_error_reports_source_line COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_error_reports_source_line.snake -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_error.cmake)
 add_test(NAME runtime_error_reports_function_stack COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_error_stack_trace.snake -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_stack_trace.cmake)
+add_test(NAME diagnostic_reports_function_arity_details COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_function_arity.snake "-DEXPECTED=expects 1 argument, received 0" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+add_test(NAME diagnostic_reports_builtin_arity_details COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/diagnostic_builtin_arity.snake "-DEXPECTED=expects 2 arguments, received 1" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+add_test(NAME runtime_reports_dictionary_key_type COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_dictionary_key_type.snake "-DEXPECTED=dictionary key must be a string" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_message.cmake)
 
 
 # Diagnostic phases must remain distinguishable and include exact source locations.
