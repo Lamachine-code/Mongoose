@@ -90,7 +90,21 @@ static bool sem(Node *node, Scope *scope, bool in_function,
         case N_FUNCTION: {
             Scope local = {.parent = scope};
             for (size_t i = 0; i < node->as.function.param_count; ++i) {
-                if (!define(&local, node->as.function.params[i], 1, node->token, error)) {
+                Name parameter = node->as.function.params[i];
+                for (size_t j = 0; j < i; ++j) {
+                    if (same(parameter, node->as.function.params[j])) {
+                        snprintf(error->message, sizeof error->message,
+                                 "duplicate parameter '%.*s' in function '%.*s'",
+                                 (int)parameter.length, parameter.name,
+                                 (int)node->as.function.name.length,
+                                 node->as.function.name.name);
+                        error->line = node->token.line;
+                        error->column = node->token.column;
+                        free(local.names); free(local.kinds);
+                        return false;
+                    }
+                }
+                if (!define(&local, parameter, 1, node->token, error)) {
                     free(local.names); free(local.kinds); return false;
                 }
             }
