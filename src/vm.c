@@ -188,6 +188,21 @@ static bool dictionary_has_key(Dictionary *dictionary, String *key) {
     return false;
 }
 
+static bool dictionary_delete(Dictionary *dictionary, String *key) {
+    for (size_t i = 0; i < dictionary->count; ++i) {
+        String *existing = dictionary->entries[i].key;
+        if (existing->length == key->length &&
+            memcmp(existing->chars, key->chars, key->length) == 0) {
+            for (size_t j = i + 1; j < dictionary->count; ++j)
+                dictionary->entries[j - 1] = dictionary->entries[j];
+            --dictionary->count;
+            dictionary->entries[dictionary->count] = (DictionaryEntryValue){0};
+            return true;
+        }
+    }
+    return false;
+}
+
 
 static bool push(VM *vm, Value value) {
     if (vm->stack_count == VM_STACK_MAX) return false;
@@ -598,6 +613,29 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (b.type != VALUE_STRING || !b.as.string)
                     return VM_TYPE_ERROR;
                 if (!push(vm, value_bool(dictionary_has_key(a.as.dictionary, b.as.string))))
+                    return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_ARRAY_REMOVE: {
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
+                size_t index;
+                if (!array_index(b, &index) || index >= a.as.array->count)
+                    return VM_INDEX_ERROR;
+                Value removed = a.as.array->items[index];
+                for (size_t i = index + 1; i < a.as.array->count; ++i)
+                    a.as.array->items[i - 1] = a.as.array->items[i];
+                --a.as.array->count;
+                a.as.array->items[a.as.array->count] = value_nil();
+                if (!push(vm, removed)) return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_DICTIONARY_DELETE: {
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                if (a.type != VALUE_DICTIONARY || !a.as.dictionary)
+                    return VM_DICTIONARY_REQUIRED;
+                if (b.type != VALUE_STRING || !b.as.string) return VM_TYPE_ERROR;
+                if (!push(vm, value_bool(dictionary_delete(a.as.dictionary, b.as.string))))
                     return VM_STACK_OVERFLOW;
                 break;
             }
