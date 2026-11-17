@@ -8,7 +8,7 @@
 typedef struct Value Value;
 typedef struct String { char *chars; size_t length; } String;
 typedef struct Array { Value *items; size_t count, capacity; } Array;
-typedef struct DictionaryEntry { String *key; Value *unused_forward_declaration; } DictionaryEntry;
+typedef struct Dictionary Dictionary;
 typedef enum { VALUE_NIL, VALUE_BOOL, VALUE_NUMBER, VALUE_ARRAY, VALUE_STRING, VALUE_DICTIONARY } ValueType;
 
 struct Value {
@@ -18,7 +18,7 @@ struct Value {
         double number;
         Array *array;
         String *string;
-        struct Dictionary *dictionary;
+        Dictionary *dictionary;
     } as;
 };
 
