@@ -77,9 +77,10 @@ separators     = { NEWLINE } ;
 - `length(value)` returns an array's element count or a string's UTF-8 code-point count. Other value types cause a runtime type error.
 - `string[index]` returns one complete UTF-8 code point as a string. `substring(string, start, length)` extracts a range of code points; invalid indices and ranges are runtime errors. Invalid UTF-8 encountered by these operations is a runtime error.
 - `push(array, value)` appends one value and returns the resulting array length. `pop(array)` removes and returns the last value; popping an empty array returns `nil`. Both require an array.
+- Arrays may contain arrays. Chained indexing such as `matrix[row][column]` supports nested reads and assignments; nested arrays retain reference semantics.
 - This baseline has no static type system; it does not infer or enforce
   numeric/boolean/array types.
 
 ## Open design boundary
 
-The language currently has no array literals, classes, imports or user-defined types in its AST.
+The language currently has no array literals, classes, imports or user-defined types in its AST. Nested arrays can be built with `new_array()` and `push()`.
