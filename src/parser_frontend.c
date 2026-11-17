@@ -9,30 +9,39 @@ typedef struct{const TokenArray*t;size_t p;Diagnostic*e;bool bad;}Parser;
 static Token pk(Parser*p){return p->t->items[p->p<p->t->count?p->p:p->t->count-1];}
 static Token pop(Parser*p){Token t=pk(p);if(t.type!=T_EOF&&p->p<p->t->count)p->p++;return t;}
 static bool eat(Parser*p,TokenType t){if(pk(p).type==t){pop(p);return true;}return false;}
+static void skip_newlines(Parser*p){while(eat(p,T_NEWLINE)){} }
 static bool need(Parser*p,TokenType t,const char*m){if(eat(p,t))return true;Token x=pk(p);if(!p->bad&&p->e){snprintf(p->e->message,sizeof p->e->message,"%s",m);p->e->line=x.line;p->e->column=x.column;}p->bad=true;return false;}
 static Name nm(Token t){return(Name){t.start,t.length};}
 static int precedence(TokenType t){switch(t){case T_ASSIGN:return 1;case T_OR:case T_AND:return 2;case T_EQ:case T_NE:return 3;case T_LT:case T_LE:case T_GT:case T_GE:return 4;case T_PLUS:case T_MINUS:return 5;case T_STAR:case T_SLASH:case T_FLOOR_DIV:case T_PERCENT:return 6;case T_POWER:return 8;case T_LPAREN:case T_LBRACKET:return 9;default:return 0;}}
 static Node* expression(Parser*p,int min);
 static Node* primary(Parser*p){Token t=pop(p);Node*n;switch(t.type){case T_NUMBER:n=newnode(N_NUMBER,t);if(n)n->as.number=strtod(t.start,NULL);return n;case T_STRING:return newnode(N_STRING,t);case T_TRUE:case T_FALSE:n=newnode(N_BOOL,t);if(n)n->as.boolean=t.type==T_TRUE;return n;case T_NIL:return newnode(N_NIL,t);case T_IDENT:n=newnode(N_IDENT,t);if(n)n->as.name=nm(t);return n;case T_LBRACKET:{
  n=newnode(N_ARRAY,t);if(!n)return NULL;
- if(eat(p,T_COLON)){n->kind=N_DICTIONARY;}
+ skip_newlines(p);
+ if(eat(p,T_COLON)){n->kind=N_DICTIONARY;skip_newlines(p);}
  else if(pk(p).type!=T_RBRACKET){
   Node*first=expression(p,1);
   if(!first){drop(n);return NULL;}
+  skip_newlines(p);
   if(eat(p,T_COLON)){
    n->kind=N_DICTIONARY;
    if(first->kind!=N_STRING){drop(first);drop(n);p->bad=true;if(p->e){snprintf(p->e->message,sizeof p->e->message,"dictionary keys must be string literals");p->e->line=t.line;p->e->column=t.column;}return NULL;}
    if(!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,first)){drop(first);drop(n);p->bad=true;return NULL;}
+   skip_newlines(p);
    Node*v=expression(p,1);if(!v||!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,v)){drop(v);drop(n);p->bad=true;return NULL;}
+   skip_newlines(p);
    while(eat(p,T_COMMA)){
+    skip_newlines(p);
     Node*k=expression(p,1);if(!k||k->kind!=N_STRING){drop(k);drop(n);p->bad=true;if(p->e){snprintf(p->e->message,sizeof p->e->message,"dictionary keys must be string literals");p->e->line=t.line;p->e->column=t.column;}return NULL;}
+    skip_newlines(p);
     if(!need(p,T_COLON,"expected ':' after dictionary key")){drop(k);drop(n);return NULL;}
-    if(!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,k)){drop(k);drop(n);p->bad=true;return NULL;}
-    v=expression(p,1);if(!v||!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,v)){drop(v);drop(n);p->bad=true;return NULL;}
+    skip_newlines(p);
+    v=expression(p,1);if(!v||!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,k)){drop(k);drop(v);drop(n);p->bad=true;return NULL;}
+    if(!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,v)){drop(v);drop(n);p->bad=true;return NULL;}
+    skip_newlines(p);
    }
   }else{
    if(!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,first)){drop(first);drop(n);p->bad=true;return NULL;}
-   while(eat(p,T_COMMA)){Node*x=expression(p,1);if(!x||!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,x)){drop(x);drop(n);p->bad=true;return NULL;}}
+   while(eat(p,T_COMMA)){skip_newlines(p);Node*x=expression(p,1);if(!x||!pushnode(&n->as.list.items,&n->as.list.count,&n->as.list.capacity,x)){drop(x);drop(n);p->bad=true;return NULL;}skip_newlines(p);}
   }
  }
  if(!need(p,T_RBRACKET,"expected ']' after collection literal")){drop(n);return NULL;}
