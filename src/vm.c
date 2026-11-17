@@ -15,6 +15,9 @@ void vm_free(VM *vm) {
     for (size_t i = 0; i < vm->string_count; ++i)
         value_string_free(vm->strings[i]);
     free(vm->strings);
+    for (size_t i = 0; i < vm->dictionary_count; ++i)
+        value_dictionary_free(vm->dictionaries[i]);
+    free(vm->dictionaries);
     *vm = (VM){0};
 }
 
@@ -131,6 +134,48 @@ static bool array_set(Array *array, size_t index, Value value) {
         array->items[array->count++] = value_nil();
     array->items[index] = value;
     return true;
+}
+
+static bool register_dictionary(VM *vm, Dictionary *dictionary) {
+    if (vm->dictionary_count == vm->dictionary_capacity) {
+        size_t capacity = vm->dictionary_capacity < 8 ? 8 : vm->dictionary_capacity * 2;
+        Dictionary **items = realloc(vm->dictionaries, capacity * sizeof *items);
+        if (!items) return false;
+        vm->dictionaries = items;
+        vm->dictionary_capacity = capacity;
+    }
+    vm->dictionaries[vm->dictionary_count++] = dictionary;
+    return true;
+}
+
+static bool dictionary_set(Dictionary *dictionary, String *key, Value value) {
+    for (size_t i = 0; i < dictionary->count; ++i) {
+        String *existing = dictionary->entries[i].key;
+        if (existing->length == key->length &&
+            memcmp(existing->chars, key->chars, key->length) == 0) {
+            dictionary->entries[i].value = value;
+            return true;
+        }
+    }
+    if (dictionary->count == dictionary->capacity) {
+        size_t capacity = dictionary->capacity < 8 ? 8 : dictionary->capacity * 2;
+        DictionaryEntryValue *entries = realloc(dictionary->entries, capacity * sizeof *entries);
+        if (!entries) return false;
+        dictionary->entries = entries;
+        dictionary->capacity = capacity;
+    }
+    dictionary->entries[dictionary->count++] = (DictionaryEntryValue){key, value};
+    return true;
+}
+
+static Value dictionary_get(Dictionary *dictionary, String *key) {
+    for (size_t i = 0; i < dictionary->count; ++i) {
+        String *existing = dictionary->entries[i].key;
+        if (existing->length == key->length &&
+            memcmp(existing->chars, key->chars, key->length) == 0)
+            return dictionary->entries[i].value;
+    }
+    return value_nil();
 }
 
 static bool push(VM *vm, Value value) {
@@ -374,6 +419,28 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (!push(vm, value_array(array))) return VM_STACK_OVERFLOW;
                 break;
             }
+            case OP_NEW_DICTIONARY: {
+                Dictionary *dictionary = calloc(1, sizeof *dictionary);
+                if (!dictionary) return VM_OUT_OF_MEMORY;
+                if (!register_dictionary(vm, dictionary)) {
+                    value_dictionary_free(dictionary);
+                    return VM_OUT_OF_MEMORY;
+                }
+                if (!push(vm, value_dictionary(dictionary))) return VM_STACK_OVERFLOW;
+                break;
+            }
+            case OP_DICTIONARY_LITERAL_ADD: {
+                if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                Value dictionary_value;
+                if (!pop(vm, &dictionary_value)) return VM_STACK_UNDERFLOW;
+                if (dictionary_value.type != VALUE_DICTIONARY || !dictionary_value.as.dictionary)
+                    return VM_DICTIONARY_REQUIRED;
+                if (a.type != VALUE_STRING || !a.as.string) return VM_TYPE_ERROR;
+                if (!dictionary_set(dictionary_value.as.dictionary, a.as.string, b))
+                    return VM_OUT_OF_MEMORY;
+                if (!push(vm, dictionary_value)) return VM_STACK_OVERFLOW;
+                break;
+            }
             case OP_GET_INDEX: {
                 if (!pop(vm, &b) || !pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 size_t index;
@@ -390,10 +457,14 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                     if (!character) return VM_OUT_OF_MEMORY;
                     if (!register_string(vm, character)) { value_string_free(character); return VM_OUT_OF_MEMORY; }
                     if (!push(vm, value_string(character))) return VM_STACK_OVERFLOW;
-                } else {
-                    if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
+                } else if (a.type == VALUE_ARRAY && a.as.array) {
                     if (!array_index(b, &index) || index >= a.as.array->count) return VM_INDEX_ERROR;
                     if (!push(vm, a.as.array->items[index])) return VM_STACK_OVERFLOW;
+                } else if (a.type == VALUE_DICTIONARY && a.as.dictionary) {
+                    if (b.type != VALUE_STRING || !b.as.string) return VM_TYPE_ERROR;
+                    if (!push(vm, dictionary_get(a.as.dictionary, b.as.string))) return VM_STACK_OVERFLOW;
+                } else {
+                    return VM_ARRAY_REQUIRED;
                 }
                 break;
             }
@@ -402,6 +473,8 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 size_t count;
                 if (a.type == VALUE_ARRAY && a.as.array) {
                     count = a.as.array->count;
+                } else if (a.type == VALUE_DICTIONARY && a.as.dictionary) {
+                    count = a.as.dictionary->count;
                 } else if (a.type == VALUE_STRING && a.as.string) {
                     if (!utf8_count(a.as.string, &count)) return VM_UTF8_ERROR;
                 } else {
@@ -467,11 +540,15 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (!pop(vm, &value) || !pop(vm, &b) || !pop(vm, &a))
                     return VM_STACK_UNDERFLOW;
                 size_t index;
-                if (a.type != VALUE_ARRAY || !a.as.array)
-                    return VM_ARRAY_REQUIRED;
-                if (!array_index(b, &index)) return VM_INDEX_ERROR;
-                if (!array_set(a.as.array, index, value))
-                    return index >= 65536 ? VM_INDEX_ERROR : VM_OUT_OF_MEMORY;
+                if (a.type == VALUE_DICTIONARY && a.as.dictionary) {
+                    if (b.type != VALUE_STRING || !b.as.string) return VM_TYPE_ERROR;
+                    if (!dictionary_set(a.as.dictionary, b.as.string, value)) return VM_OUT_OF_MEMORY;
+                } else {
+                    if (a.type != VALUE_ARRAY || !a.as.array) return VM_ARRAY_REQUIRED;
+                    if (!array_index(b, &index)) return VM_INDEX_ERROR;
+                    if (!array_set(a.as.array, index, value))
+                        return index >= 65536 ? VM_INDEX_ERROR : VM_OUT_OF_MEMORY;
+                }
                 if (!push(vm, value)) return VM_STACK_OVERFLOW;
                 break;
             }
