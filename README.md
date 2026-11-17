@@ -34,7 +34,7 @@ The current executable subset supports:
 - String concatenation with `+`, content-based string equality and printing.
 - `length(value)` returns the number of elements in an array or UTF-8 code points in a string; `string[index]` returns one complete UTF-8 code point; `substring(string, start, length)` extracts a range of code points. Indices are zero-based.
 - Arrays support `push(array, value)`, which appends and returns the new array length, and `pop(array)`, which removes and returns the last element (or `nil` when empty).
-- Dynamic arrays created with `new_array()`, indexed reads and writes, automatic growth with nil-filled gaps, and reference semantics when passed to functions.
+- Dynamic arrays created with `new_array()`, indexed reads and writes, automatic growth with nil-filled gaps, and reference semantics when passed to functions. Arrays can contain other arrays, so multidimensional access and mutation work with chained indexing such as `matrix[row][column]`.
 
 Example:
 
