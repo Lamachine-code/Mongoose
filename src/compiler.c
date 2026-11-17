@@ -288,17 +288,39 @@ static bool expression(Compiler*c,Node*n) {
         }
         case N_ASSIGN: {
             Node*t=n->as.assign.target;
-            if(t->kind==N_INDEX)
-                return expression(c,t->as.index.target) &&
-                       expression(c,t->as.index.index) &&
-                       expression(c,n->as.assign.value) &&
-                       emit(c,OP_SET_INDEX,n->token);
+            bool compound = n->token.type != T_ASSIGN;
+            OpCode arithmetic;
+            switch(n->token.type) {
+                case T_PLUS_EQUAL: arithmetic=OP_ADD; break;
+                case T_MINUS_EQUAL: arithmetic=OP_SUBTRACT; break;
+                case T_STAR_EQUAL: arithmetic=OP_MULTIPLY; break;
+                case T_SLASH_EQUAL: arithmetic=OP_DIVIDE; break;
+                default: arithmetic=OP_NIL; break;
+            }
+            if(t->kind==N_INDEX) {
+                if(!expression(c,t->as.index.target) ||
+                   !expression(c,t->as.index.index)) return false;
+                if(compound) {
+                    if(!emit(c,OP_GET_INDEX_KEEP,n->token) ||
+                       !expression(c,n->as.assign.value) ||
+                       !emit(c,arithmetic,n->token)) return false;
+                } else if(!expression(c,n->as.assign.value)) return false;
+                return emit(c,OP_SET_INDEX,n->token);
+            }
             if(t->kind!=N_IDENT)return fail(c,n->token,"invalid assignment target");
             int slot=c->in_function?find_local(c,t->as.name):-1;
-            if(slot>=0)return expression(c,n->as.assign.value)&&emit_slot(c,OP_SET_LOCAL,(uint8_t)slot,n->token);
+            if(slot>=0) {
+                if(compound && !emit_slot(c,OP_GET_LOCAL,(uint8_t)slot,n->token))return false;
+                if(!expression(c,n->as.assign.value))return false;
+                if(compound && !emit(c,arithmetic,n->token))return false;
+                return emit_slot(c,OP_SET_LOCAL,(uint8_t)slot,n->token);
+            }
             slot=find_global(c,t->as.name);
             if(slot<0)return fail(c,n->token,"assignment to unknown variable");
-            return expression(c,n->as.assign.value)&&emit_slot(c,OP_SET_GLOBAL,(uint8_t)slot,n->token);
+            if(compound && !emit_slot(c,OP_GET_GLOBAL,(uint8_t)slot,n->token))return false;
+            if(!expression(c,n->as.assign.value))return false;
+            if(compound && !emit(c,arithmetic,n->token))return false;
+            return emit_slot(c,OP_SET_GLOBAL,(uint8_t)slot,n->token);
         }
         default:return fail(c,n->token,"syntax is not executable yet");
     }
