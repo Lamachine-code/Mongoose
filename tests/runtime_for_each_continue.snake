@@ -1,0 +1,9 @@
+let numbers = [1, 2, 3, 4]
+let total = 0
+for number in numbers do
+    if number == 2 then
+        continue
+    stop
+    total = total + number
+stop
+print(total)
