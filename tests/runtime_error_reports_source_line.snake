@@ -1,0 +1,3 @@
+let value = 10
+let divisor = 0
+print(value / divisor)
