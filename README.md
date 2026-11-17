@@ -19,7 +19,7 @@ ctest --test-dir build --output-on-failure
 ```
 
 The current executable subset supports:
-- Global variables and assignments.
+- Global variables and assignments, including compound arithmetic assignments (`+=`, `-=`, `*=`, `/=`) on variables and indexed array/dictionary values.
 - Numeric, boolean, nil and string values, including escaped string literals.
 - Arithmetic, comparisons, unary minus and `not`.
 - The `nil` literal for absence of a value; compare with `==` or `!=`.
