@@ -372,6 +372,9 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
 
     size_t ip = 0;
     while (ip < chunk->count) {
+        if (vm->gc_threshold == 0) vm->gc_threshold = 64;
+        if (object_count(vm) >= vm->gc_threshold)
+            collect_garbage(vm, chunk);
         size_t instruction_offset = ip;
         uint8_t instruction = chunk->code[ip++];
         vm->error_line = chunk->lines ? chunk->lines[instruction_offset] : 0;
