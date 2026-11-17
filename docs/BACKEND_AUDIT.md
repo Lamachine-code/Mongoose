@@ -38,7 +38,8 @@
 - `while condition do ... stop` loops with nested-loop support.
 - `break` exits the innermost loop; `continue` jumps to its next condition check.
 - Semantic analysis rejects `break` and `continue` outside loops.
-- `new_array()` and array literals (`[]`, `[value, ...]`), indexed reads/writes, nested arrays (`matrix[row][column]`) and array arguments passed by reference.\n- Dictionary literals (`["key": value, ...]`, `[:]`), string-keyed indexed reads/writes, nested dictionaries/arrays and dictionary arguments passed by reference.
+- `new_array()` and array literals (`[]`, `[value, ...]`), indexed reads/writes, nested arrays (`matrix[row][column]`) and array arguments passed by reference. 
+- Dictionary literals (`["key": value, ...]`, `[:]`), string-keyed indexed reads/writes, nested dictionaries/arrays and dictionary arguments passed by reference.
 
 ## Runtime architecture
 
@@ -81,7 +82,8 @@ discarded and the right operand is evaluated.
 - `break` and `continue`, nested-loop targeting, local cleanup on loop exit, and semantic rejection outside loops.
 - Inclusive `for` loops, one-time bound evaluation, loop-variable scope, and `continue` increment behavior.
 - Nested-array reads, nested indexed assignment, and aliasing between an inner array and its containing array.
-- Array literals: basic construction, nested literals, empty literals, and expression-valued elements.\n- Dictionaries: literal construction, empty dictionaries, reads, writes, missing keys, duplicate keys, nested collections, function aliasing and rejection of non-string keys.
+- Array literals: basic construction, nested literals, empty literals, and expression-valued elements. 
+- Dictionaries: literal construction, empty dictionaries, reads, writes, missing keys, duplicate keys, nested collections, function aliasing and rejection of non-string keys.
 
 Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Each compiler loop context records its condition target, lexical scope depth, variable-slot boundary and pending `break` jumps. A `break` emits a forward jump patched to the end of the innermost loop; a `continue` emits a backward jump to that loop's condition.
 
