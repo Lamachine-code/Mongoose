@@ -1,0 +1,5 @@
+let numbers = [10, 20, 30]
+print(numbers[0])
+print(length(numbers))
+numbers[1] = 99
+print(numbers[1])
