@@ -278,5 +278,4 @@ add_test(NAME runtime_compound_index_evaluates_target_once COMMAND mongoose ${CM
 set_tests_properties(runtime_compound_index_evaluates_target_once PROPERTIES PASS_REGULAR_EXPRESSION "1")
 add_test(NAME semantic_rejects_invalid_compound_assignment_target COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/compound_assignment_invalid_target.snake)
 set_tests_properties(semantic_rejects_invalid_compound_assignment_target PROPERTIES WILL_FAIL TRUE)
-add_test(NAME runtime_error_reports_source_line COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_error_reports_source_line.snake)
-set_tests_properties(runtime_error_reports_source_line PROPERTIES WILL_FAIL TRUE PASS_REGULAR_EXPRESSION ":3: runtime error: division by zero")
+add_test(NAME runtime_error_reports_source_line COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_error_reports_source_line.snake -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_error.cmake)
