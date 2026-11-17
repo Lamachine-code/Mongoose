@@ -1,0 +1,10 @@
+let user = [
+    "profile": ["name": "Alice"],
+    "scores": [10, 20]
+]
+print(user["profile"]["name"])
+print(user["scores"][1])
+user["profile"]["name"] = "Bob"
+user["scores"][0] = 99
+print(user["profile"]["name"])
+print(user["scores"][0])
