@@ -38,11 +38,11 @@ Value value_nil(void);
 Value value_bool(bool value);
 Value value_number(double value);
 Value value_array(Array *value);
-Value value_string(String *value);
+Value value_string(String *value);\nValue value_dictionary(Dictionary *value);
 String *string_new(const char *chars, size_t length);
 void value_string_free(String *string);
 bool value_is_falsey(Value value);
 void value_print(FILE *stream, Value value);
-void value_array_free(Array *array);
+void value_array_free(Array *array);\nvoid value_dictionary_free(Dictionary *dictionary);
 
 #endif
