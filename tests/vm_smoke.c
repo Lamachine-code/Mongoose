@@ -79,7 +79,9 @@ static bool test_gc_dictionary_retains_array(void) {
         emit(&chunk, OP_POP) &&
         emit_ephemeral_arrays(&chunk, 70) &&
         emit_global(&chunk, OP_GET_GLOBAL, 0) &&
-        emit_constant(&chunk, value_string(key)) &&
+        emit(&chunk, OP_CONSTANT) &&
+        chunk_write(&chunk, (uint8_t)(key_index & 0xff), 1) &&
+        chunk_write(&chunk, (uint8_t)(key_index >> 8), 1) &&
         emit(&chunk, OP_GET_INDEX) &&
         emit(&chunk, OP_RETURN);
     bool passed = built && run_chunk(&chunk, &vm, "dictionary retains array") &&
