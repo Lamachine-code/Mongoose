@@ -41,7 +41,7 @@ block          = { declaration | statement, separators } ;
 assignmentOrExpression = expression ;
 
 expression     = assignment ;
-assignment     = logical, [ "=", assignment ] ;
+assignment     = logical, [ ("=" | "+=" | "-=" | "*=" | "/="), assignment ] ;
 logical        = equality, { ("and" | "or"), equality } ;
 equality       = comparison, { ("==" | "!="), comparison } ;
 comparison     = term, { ("<" | "<=" | ">" | ">="), term } ;
@@ -68,7 +68,7 @@ separators     = { NEWLINE } ;
 - Functions may call themselves and other functions declared in the same
   lexical scope.
 - Reading an undeclared identifier is an error.
-- Assignment targets must be identifiers or indexed expressions.
+- Assignment targets must be identifiers or indexed expressions. Compound assignments (`+=`, `-=`, `*=`, `/=`) apply the corresponding arithmetic operation and store the result. Indexed compound assignments evaluate the target and index exactly once.
 - Calls must resolve to a function (except recognized builtins) and use the
   expected number of arguments.
 - `return` is valid only inside a function.
