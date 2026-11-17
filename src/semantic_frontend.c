@@ -159,6 +159,17 @@ static bool sem(Node *node, Scope *scope, bool in_function,
             for (size_t i = 0; i < node->as.list.count; ++i)
                 if (!sem(node->as.list.items[i], scope, in_function, loop_depth, error)) return false;
             return true;
+        case N_DICTIONARY:
+            for (size_t i = 0; i < node->as.list.count; i += 2) {
+                if (node->as.list.items[i]->kind != N_STRING) {
+                    snprintf(error->message, sizeof error->message, "dictionary keys must be string literals");
+                    error->line = node->as.list.items[i]->token.line;
+                    error->column = node->as.list.items[i]->token.column;
+                    return false;
+                }
+                if (!sem(node->as.list.items[i + 1], scope, in_function, loop_depth, error)) return false;
+            }
+            return true;
         case N_UNARY:
             return sem(node->as.unary.operand, scope, in_function, loop_depth, error);
         case N_BINARY:
