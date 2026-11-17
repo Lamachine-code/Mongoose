@@ -12,7 +12,7 @@ This grammar documents the source syntax currently supported by the Mongoose fro
 - String indexing and substring offsets are zero-based UTF-8 Unicode code-point indices.
 - Newlines separate statements.
 - Keywords are `let`, `function`, `if`, `then`, `else`, `stop`, `while`, `do`,
-  `for`, `to`, `nil`, `return`, `and`, `or` and `not`.
+  `for`, `to`, `in`, `nil`, `return`, `and`, `or` and `not`.
 - `#` starts a line comment.
 - `//` starts a line comment when it is the first non-whitespace text on a
   line; otherwise it is the floor-division operator. This preserves the
@@ -77,7 +77,7 @@ separators     = { NEWLINE } ;
 - `nil` is distinct from `false`, `0` and the empty string; `==` and `!=` compare it by value type.
 - `length(value)` returns an array's element count, a dictionary's distinct-key count or a string's UTF-8 code-point count. Other value types cause a runtime type error.\n- `keys(dictionary)` and `values(dictionary)` return arrays in dictionary insertion order. `has_key(dictionary, key)` returns a boolean and requires a string key. These builtins require a dictionary argument.
 - `string[index]` returns one complete UTF-8 code point as a string. `substring(string, start, length)` extracts a range of code points; invalid indices and ranges are runtime errors. Invalid UTF-8 encountered by these operations is a runtime error.
-- `push(array, value)` appends one value and returns the resulting array length. `pop(array)` removes and returns the last value; popping an empty array returns `nil`. Both require an array.
+- `push(array, value)` appends one value and returns the resulting array length. `pop(array)` removes and returns the last value; popping an empty array returns `nil`. `remove(array, index)` removes the indexed element, shifts subsequent elements left and returns the removed value; an invalid index is a runtime error. These builtins require an array.\n- `delete(dictionary, key)` removes a string key and returns `true` if it existed, otherwise `false`. It requires a dictionary and a string key. Remaining entries retain their relative insertion order.
 - Array literals use square brackets: `[10, 20, 30]`; the empty literal `[]` is valid. Elements are expressions and may themselves be arrays.
 - Arrays may contain arrays. Chained indexing such as `matrix[row][column]` supports nested reads and assignments; nested arrays retain reference semantics. 
 - Dictionaries use string-literal keys, for example `["name": "Alice"]`; `[:]` creates an empty dictionary. Indexed reads of absent keys return `nil`, and indexed assignment inserts or replaces a key. Duplicate keys in a literal keep the last value. Dictionaries retain reference semantics and may be nested in arrays or other dictionaries. `length(dictionary)` returns its number of distinct keys. Updating a key preserves its original insertion position.
