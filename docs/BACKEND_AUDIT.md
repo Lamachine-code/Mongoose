@@ -80,7 +80,7 @@ discarded and the right operand is evaluated.
 - Recursive factorial.
 - Short-circuit `and` and `or`, using division by zero as a guard to prove the skipped operand is not evaluated.
 - `break` and `continue`, nested-loop targeting, local cleanup on loop exit, and semantic rejection outside loops.
-- Inclusive `for` loops, one-time bound evaluation, loop-variable scope, and `continue` increment behavior.
+- Inclusive numeric `for` loops, one-time bound evaluation, loop-variable scope, and `continue` increment behavior.\n- Collection `for-in` loops over snapshot copies of array values or dictionary keys, including insertion order, loop-variable scope, and `continue` behavior.
 - Nested-array reads, nested indexed assignment, and aliasing between an inner array and its containing array.
 - Array literals: basic construction, nested literals, empty literals, and expression-valued elements. 
 - Dictionaries: literal construction, empty dictionaries, reads, writes, missing keys, duplicate keys, nested collections, function aliasing, non-string key rejection, key/value extraction, membership and builtin argument validation.
@@ -90,4 +90,5 @@ Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Eac
 Before either jump, the compiler emits cleanup for variables introduced since the loop began. Scoped globals are reset with `OP_CLEAR_GLOBAL`; function locals are popped from the operand stack. The compiler's static scope bookkeeping is intentionally left unchanged while emitting this alternate control-flow path, so the ordinary fall-through path can still be generated correctly.
 
 
-A `for` loop creates a lexical scope containing its iteration variable and a hidden upper-bound slot. Both range expressions are evaluated once. The condition uses an inclusive comparison. `continue` jumps to the increment sequence; `break` exits and cleans up the entire loop scope.
+A numeric `for` loop creates a lexical scope containing its iteration variable and a hidden upper-bound slot. Both range expressions are evaluated once. The condition uses an inclusive comparison. `continue` jumps to the increment sequence; `break` exits and cleans up the entire loop scope.
+\n\nA collection `for-in` loop evaluates its collection once and emits `OP_ITER_INIT`, which creates a VM-owned snapshot array. Arrays are copied as values; dictionaries are copied as their keys in insertion order. The compiler stores the snapshot, current index and snapshot length in hidden scoped slots, then uses ordinary indexed reads and loop branches. Mutating the original collection does not alter the active iteration.\n
