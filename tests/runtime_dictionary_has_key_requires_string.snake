@@ -1,0 +1,2 @@
+let data = ["count": 1]
+print(has_key(data, 1))
