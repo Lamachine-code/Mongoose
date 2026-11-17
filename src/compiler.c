@@ -267,6 +267,14 @@ static bool expression(Compiler*c,Node*n) {
                 if(n->as.call.arg_count!=2)return fail(c,n->token,"has_key() expects two arguments");
                 return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_DICTIONARY_HAS_KEY,n->token);
             }
+            if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"remove",6)) {
+                if(n->as.call.arg_count!=2)return fail(c,n->token,"remove() expects two arguments");
+                return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_ARRAY_REMOVE,n->token);
+            }
+            if(n->as.call.name.length==6&&!memcmp(n->as.call.name.name,"delete",6)) {
+                if(n->as.call.arg_count!=2)return fail(c,n->token,"delete() expects two arguments");
+                return expression(c,n->as.call.args[0])&&expression(c,n->as.call.args[1])&&emit(c,OP_DICTIONARY_DELETE,n->token);
+            }
             if(n->as.call.name.length==9&&!memcmp(n->as.call.name.name,"substring",9)) {
                 if(n->as.call.arg_count!=3)return fail(c,n->token,"substring() expects three arguments");
                 for(size_t i=0;i<3;i++)if(!expression(c,n->as.call.args[i]))return false;
