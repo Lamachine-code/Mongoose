@@ -305,6 +305,8 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                           a.as.number == b.as.number) ||
                          (a.type == VALUE_ARRAY &&
                           a.as.array == b.as.array) ||
+                         (a.type == VALUE_DICTIONARY &&
+                          a.as.dictionary == b.as.dictionary) ||
                          (a.type == VALUE_STRING && a.as.string && b.as.string &&
                           a.as.string->length == b.as.string->length &&
                           memcmp(a.as.string->chars, b.as.string->chars,
