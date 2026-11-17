@@ -9,8 +9,35 @@ typedef struct{const TokenArray*t;size_t p;Diagnostic*e;bool bad;}Parser;
 static Token pk(Parser*p){return p->t->items[p->p<p->t->count?p->p:p->t->count-1];}
 static Token pop(Parser*p){Token t=pk(p);if(t.type!=T_EOF&&p->p<p->t->count)p->p++;return t;}
 static bool eat(Parser*p,TokenType t){if(pk(p).type==t){pop(p);return true;}return false;}
+static const char *token_name(TokenType t){
+ switch(t){
+  case T_EOF:return "end of file";case T_ERROR:return "invalid token";case T_NEWLINE:return "newline";
+  case T_IDENT:return "identifier";case T_NUMBER:return "number";case T_STRING:return "string";
+  case T_LET:return "'let'";case T_FUNCTION:return "'function'";case T_IF:return "'if'";case T_THEN:return "'then'";case T_ELSE:return "'else'";case T_STOP:return "'stop'";case T_WHILE:return "'while'";case T_DO:return "'do'";case T_FOR:return "'for'";case T_TO:return "'to'";case T_IN:return "'in'";case T_BREAK:return "'break'";case T_CONTINUE:return "'continue'";case T_TRUE:return "'true'";case T_FALSE:return "'false'";case T_NIL:return "'nil'";case T_RETURN:return "'return'";
+  case T_AND:return "'and'";case T_OR:return "'or'";case T_NOT:return "'not'";
+  case T_PLUS:return "'+'";case T_MINUS:return "'-'";case T_STAR:return "'*'";case T_SLASH:return "'/'";case T_FLOOR_DIV:return "'//'";case T_PERCENT:return "'%'";case T_POWER:return "'**'";
+  case T_ASSIGN:return "'='";case T_PLUS_EQUAL:return "'+='";case T_MINUS_EQUAL:return "'-='";case T_STAR_EQUAL:return "'*='";case T_SLASH_EQUAL:return "'/='";case T_EQ:return "'=='";case T_NE:return "'!='";case T_LT:return "'<'";case T_LE:return "'<='";case T_GT:return "'>'";case T_GE:return "'>='";
+  case T_LPAREN:return "'('";case T_RPAREN:return "')'";case T_LBRACKET:return "'['";case T_RBRACKET:return "']'";case T_COMMA:return "','";case T_COLON:return "':'";
+ }
+ return "token";
+}
+static void describe_token(Token t,char*out,size_t size){
+ if(t.type==T_IDENT||t.type==T_NUMBER||t.type==T_STRING){
+  int n=(int)(t.length>48?48:t.length);
+  snprintf(out,size,"%s '%.*s'%s",t.type==T_IDENT?"identifier":t.type==T_NUMBER?"number":"string",n,t.start,t.length>48?"...":"");
+ }else snprintf(out,size,"%s",token_name(t.type));
+}
 static void skip_newlines(Parser*p){while(eat(p,T_NEWLINE)){} }
-static bool need(Parser*p,TokenType t,const char*m){if(eat(p,t))return true;Token x=pk(p);if(!p->bad&&p->e){snprintf(p->e->message,sizeof p->e->message,"%s",m);p->e->line=x.line;p->e->column=x.column;}p->bad=true;return false;}
+static bool need(Parser*p,TokenType t,const char*m){
+ if(eat(p,t))return true;
+ Token x=pk(p);
+ if(!p->bad&&p->e){
+  char found[96];describe_token(x,found,sizeof found);
+  snprintf(p->e->message,sizeof p->e->message,"%s, found %s",m,found);
+  p->e->line=x.line;p->e->column=x.column;
+ }
+ p->bad=true;return false;
+}
 static Name nm(Token t){return(Name){t.start,t.length};}
 static int precedence(TokenType t){switch(t){case T_ASSIGN:case T_PLUS_EQUAL:case T_MINUS_EQUAL:case T_STAR_EQUAL:case T_SLASH_EQUAL:return 1;case T_OR:case T_AND:return 2;case T_EQ:case T_NE:return 3;case T_LT:case T_LE:case T_GT:case T_GE:return 4;case T_PLUS:case T_MINUS:return 5;case T_STAR:case T_SLASH:case T_FLOOR_DIV:case T_PERCENT:return 6;case T_POWER:return 8;case T_LPAREN:case T_LBRACKET:return 9;default:return 0;}}
 static Node* expression(Parser*p,int min);
@@ -46,7 +73,7 @@ static Node* primary(Parser*p){Token t=pop(p);Node*n;switch(t.type){case T_NUMBE
  }
  if(!need(p,T_RBRACKET,"expected ']' after collection literal")){drop(n);return NULL;}
  return n;
-}case T_MINUS:case T_NOT:n=newnode(N_UNARY,t);if(n){n->as.unary.op=t;n->as.unary.operand=expression(p,7);}return n;case T_LPAREN:n=expression(p,1);if(!need(p,T_RPAREN,"expected ')'")){drop(n);return NULL;}return n;default:if(p->e){snprintf(p->e->message,sizeof p->e->message,"expected expression");p->e->line=t.line;p->e->column=t.column;}p->bad=true;return NULL;}}
+}case T_MINUS:case T_NOT:n=newnode(N_UNARY,t);if(n){n->as.unary.op=t;n->as.unary.operand=expression(p,7);}return n;case T_LPAREN:n=expression(p,1);if(!need(p,T_RPAREN,"expected ')'")){drop(n);return NULL;}return n;default:if(p->e){char found[96];describe_token(t,found,sizeof found);snprintf(p->e->message,sizeof p->e->message,"expected expression, found %s",found);p->e->line=t.line;p->e->column=t.column;}p->bad=true;return NULL;}}
 static Node* expression(Parser*p,int min){Node*l=primary(p);if(!l)return NULL;for(;;){Token op=pk(p);int pr=precedence(op.type);if(!pr||pr<min)break;pop(p);if(op.type==T_LPAREN){if(l->kind!=N_IDENT){drop(l);p->bad=true;return NULL;}Node*c=newnode(N_CALL,op);if(!c){drop(l);return NULL;}c->as.call.name=l->as.name;free(l);if(pk(p).type!=T_RPAREN){do{Node*a=expression(p,1);if(!a||!pushnode(&c->as.call.args,&c->as.call.arg_count,&c->as.call.arg_capacity,a)){drop(a);drop(c);p->bad=true;return NULL;}}while(eat(p,T_COMMA));}if(!need(p,T_RPAREN,"expected ')' after call arguments")){drop(c);return NULL;}l=c;continue;}if(op.type==T_LBRACKET){Node*i=expression(p,1);if(!need(p,T_RBRACKET,"expected ']'")){drop(l);drop(i);return NULL;}Node*x=newnode(N_INDEX,op);if(!x){drop(l);drop(i);return NULL;}x->as.index.target=l;x->as.index.index=i;l=x;continue;}Node*r=expression(p,(op.type==T_ASSIGN||op.type==T_PLUS_EQUAL||op.type==T_MINUS_EQUAL||op.type==T_STAR_EQUAL||op.type==T_SLASH_EQUAL||op.type==T_POWER)?pr:pr+1);if(!r){drop(l);return NULL;}Node*x=newnode((op.type==T_ASSIGN||op.type==T_PLUS_EQUAL||op.type==T_MINUS_EQUAL||op.type==T_STAR_EQUAL||op.type==T_SLASH_EQUAL)?N_ASSIGN:N_BINARY,op);if(!x){drop(l);drop(r);return NULL;}if(x->kind==N_ASSIGN){x->as.assign.target=l;x->as.assign.value=r;}else{x->as.binary.op=op;x->as.binary.left=l;x->as.binary.right=r;}l=x;}return l;}
 static Node* statements(Parser*p,TokenType stop1,TokenType stop2){Node*b=newnode(N_BLOCK,pk(p));if(!b)return NULL;while(pk(p).type!=T_EOF&&pk(p).type!=stop1&&pk(p).type!=stop2&&!p->bad){while(eat(p,T_NEWLINE)){}if(pk(p).type==T_EOF||pk(p).type==stop1||pk(p).type==stop2)break;Token t=pk(p);Node*s=NULL;
 if(eat(p,T_LET)){Token id=pk(p);if(!need(p,T_IDENT,"expected variable name")||!need(p,T_ASSIGN,"expected '=' after variable name"))break;s=newnode(N_VAR,t);if(s){s->as.var.name=nm(id);s->as.var.value=expression(p,1);}}
@@ -58,7 +85,7 @@ else if(eat(p,T_IF)){Node*c=expression(p,1);if(!need(p,T_THEN,"expected 'then'")
 else if(eat(p,T_FUNCTION)){Token id=pk(p);if(!need(p,T_IDENT,"expected function name")||!need(p,T_LPAREN,"expected '('"))break;s=newnode(N_FUNCTION,t);if(!s)break;s->as.function.name=nm(id);size_t cap=0;if(pk(p).type!=T_RPAREN){do{Token a=pk(p);if(!need(p,T_IDENT,"expected parameter name"))break;if(s->as.function.param_count==cap){size_t z=cap?cap*2:4;Name*q=realloc(s->as.function.params,z*sizeof*q);if(!q){p->bad=true;break;}s->as.function.params=q;cap=z;}s->as.function.params[s->as.function.param_count++]=nm(a);}while(eat(p,T_COMMA));}if(!need(p,T_RPAREN,"expected ')' after parameters")){drop(s);break;}while(eat(p,T_NEWLINE)){}s->as.function.body=statements(p,T_STOP,T_EOF);if(!need(p,T_STOP,"expected 'stop' after function")){drop(s);break;}}
 else if(eat(p,T_RETURN)){s=newnode(N_RETURN,t);if(s&&pk(p).type!=T_NEWLINE&&pk(p).type!=T_EOF&&pk(p).type!=T_STOP)s->as.ret.value=expression(p,1);}
 else s=expression(p,1);
-if(!s){p->bad=true;break;}if(!pushnode(&b->as.list.items,&b->as.list.count,&b->as.list.capacity,s)){drop(s);p->bad=true;break;}if(pk(p).type!=T_NEWLINE&&pk(p).type!=T_EOF&&pk(p).type!=stop1&&pk(p).type!=stop2){Token x=pk(p);if(p->e){snprintf(p->e->message,sizeof p->e->message,"expected statement separator");p->e->line=x.line;p->e->column=x.column;}p->bad=true;break;}while(eat(p,T_NEWLINE)){} }
+if(!s){p->bad=true;break;}if(!pushnode(&b->as.list.items,&b->as.list.count,&b->as.list.capacity,s)){drop(s);p->bad=true;break;}if(pk(p).type!=T_NEWLINE&&pk(p).type!=T_EOF&&pk(p).type!=stop1&&pk(p).type!=stop2){Token x=pk(p);if(p->e){char found[96];describe_token(x,found,sizeof found);snprintf(p->e->message,sizeof p->e->message,"expected statement separator, found %s",found);p->e->line=x.line;p->e->column=x.column;}p->bad=true;break;}while(eat(p,T_NEWLINE)){} }
 return b;}
 bool parse_tokens(const TokenArray*t,Ast*out,Diagnostic*e){if(!t||!t->items||!t->count||!out)return false;memset(out,0,sizeof*out);Parser p={t,0,e,false};Node*r=statements(&p,T_EOF,T_EOF);if(!r||p.bad||pk(&p).type!=T_EOF){drop(r);if(!p.bad&&e){Token x=pk(&p);snprintf(e->message,sizeof e->message,"unexpected token after program");e->line=x.line;e->column=x.column;}return false;}r->kind=N_PROGRAM;out->root=r;return true;}
 void free_ast(Ast*a){if(a){drop(a->root);a->root=NULL;}}
