@@ -115,6 +115,14 @@ static bool sem(Node *node, Scope *scope, bool in_function,
             free(local.names); free(local.kinds);
             return ok;
         }
+        case N_FOR_EACH: {
+            if (!sem(node->as.for_each.iterable, scope, in_function, loop_depth, error)) return false;
+            Scope local = {.parent = scope};
+            bool ok = define(&local, node->as.for_each.name, 1, node->token, error) &&
+                      sem(node->as.for_each.body, &local, in_function, loop_depth + 1, error);
+            free(local.names); free(local.kinds);
+            return ok;
+        }
         case N_BREAK:
         case N_CONTINUE:
             if (loop_depth == 0) {
