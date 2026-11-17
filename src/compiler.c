@@ -222,6 +222,14 @@ static bool expression(Compiler*c,Node*n) {
                     !emit(c, OP_ARRAY_LITERAL_ADD, n->token)) return false;
             }
             return true;
+        case N_DICTIONARY:
+            if (!emit(c, OP_NEW_DICTIONARY, n->token)) return false;
+            for (size_t i = 0; i < n->as.list.count; i += 2) {
+                if (!expression(c, n->as.list.items[i]) ||
+                    !expression(c, n->as.list.items[i + 1]) ||
+                    !emit(c, OP_DICTIONARY_LITERAL_ADD, n->token)) return false;
+            }
+            return true;
         case N_INDEX:
             return expression(c,n->as.index.target) &&
                    expression(c,n->as.index.index) &&
