@@ -422,6 +422,29 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 }
                 break;
             }
+            case OP_ITER_INIT: {
+                if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
+                Array *snapshot = calloc(1, sizeof *snapshot);
+                if (!snapshot) return VM_OUT_OF_MEMORY;
+                if (!register_array(vm, snapshot)) {
+                    value_array_free(snapshot);
+                    return VM_OUT_OF_MEMORY;
+                }
+                if (a.type == VALUE_ARRAY && a.as.array) {
+                    for (size_t i = 0; i < a.as.array->count; ++i)
+                        if (!array_set(snapshot, i, a.as.array->items[i]))
+                            return VM_OUT_OF_MEMORY;
+                } else if (a.type == VALUE_DICTIONARY && a.as.dictionary) {
+                    for (size_t i = 0; i < a.as.dictionary->count; ++i)
+                        if (!array_set(snapshot, i,
+                                       value_string(a.as.dictionary->entries[i].key)))
+                            return VM_OUT_OF_MEMORY;
+                } else {
+                    return VM_TYPE_ERROR;
+                }
+                if (!push(vm, value_array(snapshot))) return VM_STACK_OVERFLOW;
+                break;
+            }
             case OP_NEW_ARRAY: {
                 Array *array = calloc(1, sizeof *array);
                 if (!array) return VM_OUT_OF_MEMORY;
