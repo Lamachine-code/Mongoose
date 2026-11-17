@@ -1,5 +1,6 @@
 #include "value.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 Value value_nil(void) {
@@ -38,7 +39,7 @@ Value value_dictionary(Dictionary *dictionary) {
 }
 
 String *string_new(const char *chars, size_t length) {
-    if (length == (size_t)-1) return NULL;
+    if (length == SIZE_MAX || (length > 0 && !chars)) return NULL;
     String *string = malloc(sizeof *string);
     if (!string) return NULL;
     string->chars = malloc(length + 1);
