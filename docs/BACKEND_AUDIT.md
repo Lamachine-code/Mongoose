@@ -14,7 +14,7 @@
 - String concatenation with `+` and content-based equality.
 - Generic `length(value)`: array element count, dictionary key count or UTF-8 code-point count for strings.
 - Zero-based UTF-8 code-point indexing through `string[index]`, and code-point-range extraction through `substring(string, start, length)`.
-- Array mutation builtins: `push(array, value)` appends and returns the new length; `pop(array)` removes and returns the last value, or nil for an empty array.
+- Array mutation builtins: `push(array, value)` appends and returns the new length; `pop(array)` removes and returns the last value, or nil for an empty array.\n- Dictionary inspection builtins: `keys(dictionary)` and `values(dictionary)` return insertion-ordered arrays; `has_key(dictionary, key)` checks string-key membership.
 - User-defined functions with positional parameters, local variables, return values and recursive calls.
 - Per-call VM frames with a saved instruction pointer and operand-stack base.
 - Local variable load/store instructions.
@@ -83,7 +83,7 @@ discarded and the right operand is evaluated.
 - Inclusive `for` loops, one-time bound evaluation, loop-variable scope, and `continue` increment behavior.
 - Nested-array reads, nested indexed assignment, and aliasing between an inner array and its containing array.
 - Array literals: basic construction, nested literals, empty literals, and expression-valued elements. 
-- Dictionaries: literal construction, empty dictionaries, reads, writes, missing keys, duplicate keys, nested collections, function aliasing and rejection of non-string keys.
+- Dictionaries: literal construction, empty dictionaries, reads, writes, missing keys, duplicate keys, nested collections, function aliasing, non-string key rejection, key/value extraction, membership and builtin argument validation.
 
 Loop bytecode uses a backward `OP_LOOP` branch and forward conditional exit. Each compiler loop context records its condition target, lexical scope depth, variable-slot boundary and pending `break` jumps. A `break` emits a forward jump patched to the end of the innermost loop; a `continue` emits a backward jump to that loop's condition.
 
