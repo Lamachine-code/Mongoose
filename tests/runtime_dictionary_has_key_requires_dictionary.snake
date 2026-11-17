@@ -1,0 +1,1 @@
+print(has_key([], "key"))
