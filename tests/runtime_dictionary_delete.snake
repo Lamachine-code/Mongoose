@@ -1,0 +1,5 @@
+let person = ["name": "Alice", "age": 25, "city": "Rabat"]
+print(delete(person, "age"))
+print(has_key(person, "age"))
+print(length(person))
+print(person["city"])
