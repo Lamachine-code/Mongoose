@@ -1,0 +1,6 @@
+let empty = []
+print(length(empty))
+let values = [1 + 2, length([4, 5]), true]
+print(values[0])
+print(values[1])
+print(values[2])
