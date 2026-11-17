@@ -1,0 +1,5 @@
+function greet(name)
+    print(name)
+stop
+
+greet()
