@@ -13,7 +13,8 @@ typedef enum {
 } TokenType;
 typedef struct { TokenType type; const char *start; size_t length; int line, column; } Token;
 typedef struct { Token *items; size_t count; } TokenArray;
-typedef struct { char message[256]; int line, column; } Diagnostic;
+typedef enum { DIAGNOSTIC_NONE, DIAGNOSTIC_LEXICAL, DIAGNOSTIC_SYNTAX, DIAGNOSTIC_SEMANTIC, DIAGNOSTIC_COMPILE } DiagnosticPhase;
+typedef struct { char message[256]; int line, column; DiagnosticPhase phase; } Diagnostic;
 bool lex_source(const char *source, TokenArray *out, Diagnostic *error);
 void free_tokens(TokenArray *tokens);
 
