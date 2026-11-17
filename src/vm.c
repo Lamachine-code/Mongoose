@@ -488,7 +488,7 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (!pop(vm, &dictionary_value)) return VM_STACK_UNDERFLOW;
                 if (dictionary_value.type != VALUE_DICTIONARY || !dictionary_value.as.dictionary)
                     return VM_DICTIONARY_REQUIRED;
-                if (a.type != VALUE_STRING || !a.as.string) return VM_TYPE_ERROR;
+                if (a.type != VALUE_STRING || !a.as.string) return VM_STRING_REQUIRED;
                 if (!dictionary_set(dictionary_value.as.dictionary, a.as.string, b))
                     return VM_OUT_OF_MEMORY;
                 if (!push(vm, dictionary_value)) return VM_STACK_OVERFLOW;
@@ -514,10 +514,10 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                     if (!array_index(b, &index) || index >= a.as.array->count) return VM_INDEX_ERROR;
                     if (!push(vm, a.as.array->items[index])) return VM_STACK_OVERFLOW;
                 } else if (a.type == VALUE_DICTIONARY && a.as.dictionary) {
-                    if (b.type != VALUE_STRING || !b.as.string) return VM_TYPE_ERROR;
+                    if (b.type != VALUE_STRING || !b.as.string) return VM_STRING_REQUIRED;
                     if (!push(vm, dictionary_get(a.as.dictionary, b.as.string))) return VM_STACK_OVERFLOW;
                 } else {
-                    return VM_ARRAY_REQUIRED;
+                    return VM_INDEXABLE_REQUIRED;
                 }
                 break;
             }
@@ -534,7 +534,7 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                     if (!push(vm, dictionary_get(a.as.dictionary, b.as.string)))
                         return VM_STACK_OVERFLOW;
                 } else {
-                    return VM_ARRAY_REQUIRED;
+                    return VM_INDEXABLE_REQUIRED;
                 }
                 break;
             }
