@@ -62,14 +62,14 @@ int main(int argc,char **argv) {
  else {
   VMResult result=vm_run(&vm,&chunk);
   if(result!=VM_OK){
-   fprintf(stderr,"%s:%d: runtime error: %s\\n",argv[1],vm.error_line,vm_error(result));
+   fprintf(stderr,"%s:%d: runtime error: %s\n",argv[1],vm.error_line,vm_error(result));
    for(size_t i=vm.frame_count;i>0;--i){
     CallFrame frame=vm.frames[i-1];
     FunctionInfo function=chunk.functions[frame.function_index];
     int line=(i==vm.frame_count)?vm.error_line:vm.frames[i].call_line;
-    fprintf(stderr,"  at %.*s (%s:%d)\\n",(int)function.name_length,function.name,argv[1],line);
+    fprintf(stderr,"  at %.*s (%s:%d)\n",(int)function.name_length,function.name,argv[1],line);
    }
-   if(vm.frame_count) fprintf(stderr,"  at <main> (%s:%d)\\n",argv[1],vm.frames[0].call_line);
+   if(vm.frame_count) fprintf(stderr,"  at <main> (%s:%d)\n",argv[1],vm.frames[0].call_line);
    ok=false;
   }
  }
