@@ -1,0 +1,5 @@
+let values = [10, 20, 30, 40]
+let removed = remove(values, 1)
+print(removed)
+print(values[1])
+print(length(values))
