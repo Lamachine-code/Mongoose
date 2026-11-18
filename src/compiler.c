@@ -18,20 +18,25 @@ typedef struct {
     size_t continue_jumps[256], continue_count;
     bool continue_to_increment;
 } Loop;
+typedef struct CompilerContext {
+    struct CompilerContext *parent;
+    uint8_t function_index;
+    Local locals[COMPILER_LOCAL_MAX];
+    size_t local_count;
+    size_t scope_marks[COMPILER_SCOPE_MAX];
+    size_t scope_depth;
+    Loop loops[COMPILER_SCOPE_MAX];
+    size_t loop_depth;
+} CompilerContext;
+
 typedef struct {
     Chunk *chunk;
     Diagnostic *error;
     Global globals[COMPILER_GLOBAL_MAX];
     size_t global_count;
-    Local locals[COMPILER_LOCAL_MAX];
-    size_t local_count;
-    size_t scope_marks[COMPILER_SCOPE_MAX];
-    size_t scope_depth;
     Function functions[COMPILER_FUNCTION_MAX];
     size_t function_count;
-    bool in_function;
-    Loop loops[COMPILER_SCOPE_MAX];
-    size_t loop_depth;
+    CompilerContext *context;
 } Compiler;
 
 static bool same_name(Name a, Name b) {
@@ -68,8 +73,8 @@ static int find_global(Compiler *c, Name n) {
     return -1;
 }
 static int find_local(Compiler *c, Name n) {
-    for(size_t i=c->local_count;i>0;--i)
-        if(same_name(c->locals[i-1].name,n)) return (int)c->locals[i-1].slot;
+    for(size_t i=c->context->local_count;i>0;--i)
+        if(same_name(c->context->locals[i-1].name,n)) return (int)c->context->locals[i-1].slot;
     return -1;
 }
 static int find_function(Compiler *c, Name n) {
@@ -78,7 +83,7 @@ static int find_function(Compiler *c, Name n) {
     return -1;
 }
 static bool add_global(Compiler *c, Name n, Token t, uint8_t *slot) {
-    size_t mark=c->scope_depth?c->scope_marks[c->scope_depth-1]:0;
+    size_t mark=c->context->scope_depth?c->context->scope_marks[c->context->scope_depth-1]:0;
     for(size_t i=mark;i<c->global_count;i++)
         if(c->globals[i].active&&same_name(c->globals[i].name,n))
             return fail(c,t,"duplicate variable in the same scope");
@@ -88,28 +93,28 @@ static bool add_global(Compiler *c, Name n, Token t, uint8_t *slot) {
     c->globals[c->global_count++]=(Global){n,*slot,true}; return true;
 }
 static bool add_local(Compiler *c, Name n, Token t, uint8_t *slot) {
-    size_t mark=c->scope_depth?c->scope_marks[c->scope_depth-1]:0;
-    for(size_t i=mark;i<c->local_count;i++)
-        if(same_name(c->locals[i].name,n))
+    size_t mark=c->context->scope_depth?c->context->scope_marks[c->context->scope_depth-1]:0;
+    for(size_t i=mark;i<c->context->local_count;i++)
+        if(same_name(c->context->locals[i].name,n))
             return fail(c,t,"duplicate local variable in the same scope");
-    if(c->local_count==COMPILER_LOCAL_MAX)
+    if(c->context->local_count==COMPILER_LOCAL_MAX)
         return fail(c,t,"too many local variables");
-    *slot=(uint8_t)c->local_count;
-    c->locals[c->local_count++]=(Local){n,*slot,c->scope_depth}; return true;
+    *slot=(uint8_t)c->context->local_count;
+    c->context->locals[c->context->local_count++]=(Local){n,*slot,c->context->scope_depth}; return true;
 }
 static bool enter_scope(Compiler *c, Token t) {
-    if(c->scope_depth==COMPILER_SCOPE_MAX)
+    if(c->context->scope_depth==COMPILER_SCOPE_MAX)
         return fail(c,t,"compiler scope nesting limit exceeded");
-    c->scope_marks[c->scope_depth++]=c->in_function?c->local_count:c->global_count;
+    c->context->scope_marks[c->context->scope_depth++]=(c->context != NULL)?c->context->local_count:c->global_count;
     return true;
 }
 static bool leave_scope(Compiler *c, Token t) {
-    if(!c->scope_depth)return true;
-    size_t mark=c->scope_marks[--c->scope_depth];
-    if(c->in_function) {
-        while(c->local_count>mark) {
+    if(!c->context->scope_depth)return true;
+    size_t mark=c->context->scope_marks[--c->context->scope_depth];
+    if((c->context != NULL)) {
+        while(c->context->local_count>mark) {
             if(!emit(c,OP_POP,t))return false;
-            --c->local_count;
+            --c->context->local_count;
         }
     } else {
         for(size_t i=mark;i<c->global_count;i++) {
@@ -137,8 +142,8 @@ static bool emit_loop(Compiler*c,size_t target,Token t) {
            emit_byte(c,(uint8_t)(distance>>8),t);
 }
 static bool emit_loop_cleanup(Compiler *c, size_t variable_count, Token t) {
-    if (c->in_function) {
-        for (size_t i = c->local_count; i > variable_count; --i)
+    if ((c->context != NULL)) {
+        for (size_t i = c->context->local_count; i > variable_count; --i)
             if (!emit(c, OP_POP, t)) return false;
     } else {
         for (size_t i = variable_count; i < c->global_count; ++i)
@@ -212,7 +217,7 @@ static bool expression(Compiler*c,Node*n) {
         case N_NIL:return emit(c,OP_NIL,n->token);
         case N_STRING:return compile_string(c,n);
         case N_IDENT: {
-            int slot=c->in_function?find_local(c,n->as.name):-1;
+            int slot=(c->context != NULL)?find_local(c,n->as.name):-1;
             if(slot>=0)return emit_slot(c,OP_GET_LOCAL,(uint8_t)slot,n->token);
             slot=find_global(c,n->as.name);
             if(slot<0)return fail(c,n->token,"unknown variable in bytecode compiler");
@@ -317,7 +322,7 @@ static bool expression(Compiler*c,Node*n) {
                 return emit(c,OP_SET_INDEX,n->token);
             }
             if(t->kind!=N_IDENT)return fail(c,n->token,"invalid assignment target");
-            int slot=c->in_function?find_local(c,t->as.name):-1;
+            int slot=(c->context != NULL)?find_local(c,t->as.name):-1;
             if(slot>=0) {
                 if(compound && !emit_slot(c,OP_GET_LOCAL,(uint8_t)slot,n->token))return false;
                 if(!expression(c,n->as.assign.value))return false;
@@ -339,7 +344,7 @@ static bool statement(Compiler*c,Node*n) {
     switch(n->kind) {
         case N_FUNCTION:return true;
         case N_VAR: {
-            if(c->in_function) {
+            if((c->context != NULL)) {
                 uint8_t slot;
                 if(!expression(c,n->as.var.value)||!add_local(c,n->as.var.name,n->token,&slot))return false;
                 (void)slot; return true;
@@ -358,12 +363,12 @@ static bool statement(Compiler*c,Node*n) {
             return patch_jump(c,end,n->token);
         }
         case N_WHILE: {
-            if (c->loop_depth == COMPILER_SCOPE_MAX)
+            if (c->context->loop_depth == COMPILER_SCOPE_MAX)
                 return fail(c, n->token, "loop nesting limit exceeded");
-            Loop *loop = &c->loops[c->loop_depth++];
+            Loop *loop = &c->context->loops[c->context->loop_depth++];
             memset(loop, 0, sizeof *loop);
             loop->start = c->chunk->count;
-            loop->break_variable_count = c->in_function ? c->local_count : c->global_count;
+            loop->break_variable_count = (c->context != NULL) ? c->context->local_count : c->global_count;
             loop->continue_variable_count = loop->break_variable_count;
             size_t exit;
             bool ok = expression(c, n->as.loop.condition) &&
@@ -373,46 +378,46 @@ static bool statement(Compiler*c,Node*n) {
                       patch_jump(c, exit, n->token);
             for (size_t i = 0; ok && i < loop->break_count; ++i)
                 ok = patch_jump(c, loop->break_jumps[i], n->token);
-            --c->loop_depth;
+            --c->context->loop_depth;
             return ok;
         }
         case N_FOR: {
-            if(c->loop_depth==COMPILER_SCOPE_MAX)return fail(c,n->token,"loop nesting limit exceeded");
+            if(c->context->loop_depth==COMPILER_SCOPE_MAX)return fail(c,n->token,"loop nesting limit exceeded");
             if(!enter_scope(c,n->token))return false;
-            Loop *loop=&c->loops[c->loop_depth++];memset(loop,0,sizeof *loop);
-            loop->break_variable_count=c->in_function?c->local_count:c->global_count;
+            Loop *loop=&c->context->loops[c->context->loop_depth++];memset(loop,0,sizeof *loop);
+            loop->break_variable_count=(c->context != NULL)?c->context->local_count:c->global_count;
             static const char hidden_name[]="\001for_end";
             Name hidden={hidden_name,sizeof hidden_name-1};
             uint8_t var_slot=0,end_slot=0;
             bool ok=expression(c,n->as.for_loop.start);
-            if(ok&&c->in_function)ok=add_local(c,n->as.for_loop.name,n->token,&var_slot);
+            if(ok&&(c->context != NULL))ok=add_local(c,n->as.for_loop.name,n->token,&var_slot);
             else if(ok)ok=add_global(c,n->as.for_loop.name,n->token,&var_slot)&&emit_slot(c,OP_DEFINE_GLOBAL,var_slot,n->token);
             if(ok)ok=expression(c,n->as.for_loop.end);
-            if(ok&&c->in_function)ok=add_local(c,hidden,n->token,&end_slot);
+            if(ok&&(c->context != NULL))ok=add_local(c,hidden,n->token,&end_slot);
             else if(ok)ok=add_global(c,hidden,n->token,&end_slot)&&emit_slot(c,OP_DEFINE_GLOBAL,end_slot,n->token);
-            loop->continue_variable_count=c->in_function?c->local_count:c->global_count;
+            loop->continue_variable_count=(c->context != NULL)?c->context->local_count:c->global_count;
             loop->continue_to_increment=true;loop->start=c->chunk->count;
             size_t exit=0;
-            if(ok)ok=c->in_function?emit_slot(c,OP_GET_LOCAL,var_slot,n->token)&&emit_slot(c,OP_GET_LOCAL,end_slot,n->token):emit_slot(c,OP_GET_GLOBAL,var_slot,n->token)&&emit_slot(c,OP_GET_GLOBAL,end_slot,n->token);
+            if(ok)ok=(c->context != NULL)?emit_slot(c,OP_GET_LOCAL,var_slot,n->token)&&emit_slot(c,OP_GET_LOCAL,end_slot,n->token):emit_slot(c,OP_GET_GLOBAL,var_slot,n->token)&&emit_slot(c,OP_GET_GLOBAL,end_slot,n->token);
             if(ok)ok=emit(c,OP_LESS_EQUAL,n->token)&&emit_jump(c,OP_JUMP_IF_FALSE,n->token,&exit)&&statement(c,n->as.for_loop.body);
             for(size_t i=0;ok&&i<loop->continue_count;i++)ok=patch_jump(c,loop->continue_jumps[i],n->token);
-            if(ok)ok=c->in_function?emit_slot(c,OP_GET_LOCAL,var_slot,n->token):emit_slot(c,OP_GET_GLOBAL,var_slot,n->token);
+            if(ok)ok=(c->context != NULL)?emit_slot(c,OP_GET_LOCAL,var_slot,n->token):emit_slot(c,OP_GET_GLOBAL,var_slot,n->token);
             if(ok)ok=chunk_write_constant(c->chunk,value_number(1),n->token.line)||fail(c,n->token,"cannot add for-loop increment constant");
             if(ok)ok=emit(c,OP_ADD,n->token);
-            if(ok)ok=c->in_function?emit_slot(c,OP_SET_LOCAL,var_slot,n->token):emit_slot(c,OP_SET_GLOBAL,var_slot,n->token);
+            if(ok)ok=(c->context != NULL)?emit_slot(c,OP_SET_LOCAL,var_slot,n->token):emit_slot(c,OP_SET_GLOBAL,var_slot,n->token);
             if(ok)ok=emit(c,OP_POP,n->token)&&emit_loop(c,loop->start,n->token)&&patch_jump(c,exit,n->token);
-            --c->loop_depth;
+            --c->context->loop_depth;
             bool cleaned=leave_scope(c,n->token);
             for(size_t i=0;ok&&cleaned&&i<loop->break_count;i++)ok=patch_jump(c,loop->break_jumps[i],n->token);
             return ok&&cleaned;
         }
         case N_FOR_EACH: {
-            if (c->loop_depth == COMPILER_SCOPE_MAX)
+            if (c->context->loop_depth == COMPILER_SCOPE_MAX)
                 return fail(c, n->token, "loop nesting limit exceeded");
             if (!enter_scope(c, n->token)) return false;
-            Loop *loop = &c->loops[c->loop_depth++];
+            Loop *loop = &c->context->loops[c->context->loop_depth++];
             memset(loop, 0, sizeof *loop);
-            loop->break_variable_count = c->in_function ? c->local_count : c->global_count;
+            loop->break_variable_count = (c->context != NULL) ? c->context->local_count : c->global_count;
             static const char array_name[] = "\001for_array";
             static const char index_name[] = "\001for_index";
             static const char count_name[] = "\001for_count";
@@ -422,70 +427,70 @@ static bool statement(Compiler*c,Node*n) {
             uint8_t array_slot = 0, index_slot = 0, count_slot = 0, value_slot = 0;
             bool ok = expression(c, n->as.for_each.iterable) &&
                       emit(c, OP_ITER_INIT, n->token);
-            if (ok && c->in_function) ok = add_local(c, array_hidden, n->token, &array_slot);
+            if (ok && (c->context != NULL)) ok = add_local(c, array_hidden, n->token, &array_slot);
             else if (ok) ok = add_global(c, array_hidden, n->token, &array_slot) &&
                               emit_slot(c, OP_DEFINE_GLOBAL, array_slot, n->token);
             if (ok) ok = chunk_write_constant(c->chunk, value_number(0), n->token.line) ||
                          fail(c, n->token, "cannot add iterator index constant");
-            if (ok && c->in_function) ok = add_local(c, index_hidden, n->token, &index_slot);
+            if (ok && (c->context != NULL)) ok = add_local(c, index_hidden, n->token, &index_slot);
             else if (ok) ok = add_global(c, index_hidden, n->token, &index_slot) &&
                               emit_slot(c, OP_DEFINE_GLOBAL, index_slot, n->token);
-            if (ok) ok = c->in_function
+            if (ok) ok = (c->context != NULL)
                 ? emit_slot(c, OP_GET_LOCAL, array_slot, n->token)
                 : emit_slot(c, OP_GET_GLOBAL, array_slot, n->token);
             if (ok) ok = emit(c, OP_LENGTH, n->token);
-            if (ok && c->in_function) ok = add_local(c, count_hidden, n->token, &count_slot);
+            if (ok && (c->context != NULL)) ok = add_local(c, count_hidden, n->token, &count_slot);
             else if (ok) ok = add_global(c, count_hidden, n->token, &count_slot) &&
                               emit_slot(c, OP_DEFINE_GLOBAL, count_slot, n->token);
             if (ok) ok = emit(c, OP_NIL, n->token);
-            if (ok && c->in_function) ok = add_local(c, n->as.for_each.name, n->token, &value_slot);
+            if (ok && (c->context != NULL)) ok = add_local(c, n->as.for_each.name, n->token, &value_slot);
             else if (ok) ok = add_global(c, n->as.for_each.name, n->token, &value_slot) &&
                               emit_slot(c, OP_DEFINE_GLOBAL, value_slot, n->token);
-            loop->continue_variable_count = c->in_function ? c->local_count : c->global_count;
+            loop->continue_variable_count = (c->context != NULL) ? c->context->local_count : c->global_count;
             loop->continue_to_increment = true;
             loop->start = c->chunk->count;
             size_t exit = 0;
-            if (ok) ok = c->in_function
+            if (ok) ok = (c->context != NULL)
                 ? emit_slot(c, OP_GET_LOCAL, index_slot, n->token) &&
                   emit_slot(c, OP_GET_LOCAL, count_slot, n->token)
                 : emit_slot(c, OP_GET_GLOBAL, index_slot, n->token) &&
                   emit_slot(c, OP_GET_GLOBAL, count_slot, n->token);
             if (ok) ok = emit(c, OP_LESS, n->token) &&
                          emit_jump(c, OP_JUMP_IF_FALSE, n->token, &exit);
-            if (ok) ok = c->in_function
+            if (ok) ok = (c->context != NULL)
                 ? emit_slot(c, OP_GET_LOCAL, array_slot, n->token) &&
                   emit_slot(c, OP_GET_LOCAL, index_slot, n->token)
                 : emit_slot(c, OP_GET_GLOBAL, array_slot, n->token) &&
                   emit_slot(c, OP_GET_GLOBAL, index_slot, n->token);
             if (ok) ok = emit(c, OP_GET_INDEX, n->token) &&
-                         (c->in_function
+                         ((c->context != NULL)
                             ? emit_slot(c, OP_SET_LOCAL, value_slot, n->token)
                             : emit_slot(c, OP_SET_GLOBAL, value_slot, n->token)) &&
                          emit(c, OP_POP, n->token) &&
                          statement(c, n->as.for_each.body);
             for (size_t i = 0; ok && i < loop->continue_count; ++i)
                 ok = patch_jump(c, loop->continue_jumps[i], n->token);
-            if (ok) ok = c->in_function
+            if (ok) ok = (c->context != NULL)
                 ? emit_slot(c, OP_GET_LOCAL, index_slot, n->token)
                 : emit_slot(c, OP_GET_GLOBAL, index_slot, n->token);
             if (ok) ok = chunk_write_constant(c->chunk, value_number(1), n->token.line) ||
                          fail(c, n->token, "cannot add iterator increment constant");
             if (ok) ok = emit(c, OP_ADD, n->token) &&
-                         (c->in_function
+                         ((c->context != NULL)
                             ? emit_slot(c, OP_SET_LOCAL, index_slot, n->token)
                             : emit_slot(c, OP_SET_GLOBAL, index_slot, n->token)) &&
                          emit(c, OP_POP, n->token) &&
                          emit_loop(c, loop->start, n->token) &&
                          patch_jump(c, exit, n->token);
-            --c->loop_depth;
+            --c->context->loop_depth;
             bool cleaned = leave_scope(c, n->token);
             for (size_t i = 0; ok && cleaned && i < loop->break_count; ++i)
                 ok = patch_jump(c, loop->break_jumps[i], n->token);
             return ok && cleaned;
         }
         case N_BREAK: {
-            if (!c->loop_depth) return fail(c, n->token, "break outside loop");
-            Loop *loop = &c->loops[c->loop_depth - 1];
+            if (!c->context->loop_depth) return fail(c, n->token, "break outside loop");
+            Loop *loop = &c->context->loops[c->context->loop_depth - 1];
             if (loop->break_count == sizeof loop->break_jumps / sizeof loop->break_jumps[0])
                 return fail(c, n->token, "too many break statements in loop");
             if (!emit_loop_cleanup(c, loop->break_variable_count, n->token)) return false;
@@ -493,15 +498,15 @@ static bool statement(Compiler*c,Node*n) {
                              &loop->break_jumps[loop->break_count++]);
         }
         case N_CONTINUE: {
-            if (!c->loop_depth) return fail(c,n->token,"continue outside loop");
-            Loop *loop=&c->loops[c->loop_depth-1];
+            if (!c->context->loop_depth) return fail(c,n->token,"continue outside loop");
+            Loop *loop=&c->context->loops[c->context->loop_depth-1];
             if (!emit_loop_cleanup(c,loop->continue_variable_count,n->token)) return false;
             if (!loop->continue_to_increment) return emit_loop(c,loop->start,n->token);
             if (loop->continue_count==256) return fail(c,n->token,"too many continue statements in loop");
             return emit_jump(c,OP_JUMP,n->token,&loop->continue_jumps[loop->continue_count++]);
         }
         case N_RETURN:
-            if(!c->in_function)return fail(c,n->token,"return outside function");
+            if(!(c->context != NULL))return fail(c,n->token,"return outside function");
             return expression(c,n->as.ret.value)&&emit(c,OP_RETURN,n->token);
         case N_BLOCK: {
             if(!enter_scope(c,n->token))return false;
@@ -534,8 +539,11 @@ bool compile_ast(const Ast*ast,Chunk*chunk,Diagnostic*error) {
         uint8_t index;
         if(!chunk_add_function(chunk,chunk->count,(uint8_t)f->as.function.param_count,f->as.function.name.name,f->as.function.name.length,&index))
             return fail(&c,f->token,"cannot register function");
-        (void)index;
-        c.in_function=true;c.local_count=0;c.scope_depth=0;
+        CompilerContext function_context = {
+            .parent = NULL,
+            .function_index = index
+        };
+        c.context = &function_context;
         for(size_t p=0;p<f->as.function.param_count;p++) {
             uint8_t slot;
             if(!add_local(&c,f->as.function.params[p],f->token,&slot))return false;
@@ -543,7 +551,7 @@ bool compile_ast(const Ast*ast,Chunk*chunk,Diagnostic*error) {
         }
         if(!statement(&c,f->as.function.body))return false;
         if(!emit(&c,OP_NIL,f->token)||!emit(&c,OP_RETURN,f->token))return false;
-        c.in_function=false;c.local_count=0;c.scope_depth=0;
+        c.context = NULL;
     }
     return true;
 }
