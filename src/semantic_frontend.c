@@ -153,40 +153,44 @@ static bool sem(Node *node, Scope *scope, bool in_function,
                 return false;
             }
             return sem(node->as.ret.value, scope, in_function, loop_depth, error);
-        case N_CALL:
-            if (!((node->as.call.name.length == 9 &&
-                   !memcmp(node->as.call.name.name, "new_array", 9)) ||
-                  (node->as.call.name.length == 5 &&
-                   !memcmp(node->as.call.name.name, "print", 5)) ||
-                  (node->as.call.name.length == 6 &&
-                   !memcmp(node->as.call.name.name, "length", 6)) ||
-                  (node->as.call.name.length == 9 &&
-                   !memcmp(node->as.call.name.name, "substring", 9)) ||
-                  (node->as.call.name.length == 4 &&
-                   !memcmp(node->as.call.name.name, "push", 4)) ||
-                  (node->as.call.name.length == 3 &&
-                   !memcmp(node->as.call.name.name, "pop", 3)) ||
-                  (node->as.call.name.length == 4 &&
-                   !memcmp(node->as.call.name.name, "keys", 4)) ||
-                  (node->as.call.name.length == 6 &&
-                   !memcmp(node->as.call.name.name, "values", 6)) ||
-                  (node->as.call.name.length == 7 &&
-                   !memcmp(node->as.call.name.name, "has_key", 7)) ||
-                  (node->as.call.name.length == 6 &&
-                   !memcmp(node->as.call.name.name, "remove", 6)) ||
-                  (node->as.call.name.length == 6 &&
-                   !memcmp(node->as.call.name.name, "delete", 6))) &&
-                lookup(scope, node->as.call.name) != 2) {
-                snprintf(error->message, sizeof error->message,
-                         "unknown function '%.*s'", (int)node->as.call.name.length,
-                         node->as.call.name.name);
-                error->line = node->token.line; error->column = node->token.column;
+        case N_CALL: {
+            /* Named calls retain the existing builtin/function validation.
+               Other callees are expressions and will be invoked indirectly. */
+            if (node->as.call.name.length != 0) {
+                Name name = node->as.call.name;
+                bool builtin =
+                    (name.length == 9 && !memcmp(name.name, "new_array", 9)) ||
+                    (name.length == 5 && !memcmp(name.name, "print", 5)) ||
+                    (name.length == 6 && !memcmp(name.name, "length", 6)) ||
+                    (name.length == 9 && !memcmp(name.name, "substring", 9)) ||
+                    (name.length == 4 && !memcmp(name.name, "push", 4)) ||
+                    (name.length == 3 && !memcmp(name.name, "pop", 3)) ||
+                    (name.length == 4 && !memcmp(name.name, "keys", 4)) ||
+                    (name.length == 6 && !memcmp(name.name, "values", 6)) ||
+                    (name.length == 7 && !memcmp(name.name, "has_key", 7)) ||
+                    (name.length == 6 && !memcmp(name.name, "remove", 6)) ||
+                    (name.length == 6 && !memcmp(name.name, "delete", 6));
+                int kind = lookup(scope, name);
+                if (!builtin && kind != 1 && kind != 2) {
+                    snprintf(error->message, sizeof error->message,
+                             "unknown function '%.*s'", (int)name.length, name.name);
+                    error->line = node->token.line; error->column = node->token.column;
+                    return false;
+                }
+                /* A variable used as a callee is valid syntax; runtime type
+                   validation belongs to the eventual indirect-call opcode. */
+                if (node->as.call.callee &&
+                    node->as.call.callee->kind != N_IDENT &&
+                    !sem(node->as.call.callee, scope, in_function, loop_depth, error))
+                    return false;
+            } else if (!sem(node->as.call.callee, scope, in_function, loop_depth, error)) {
                 return false;
             }
             for (size_t i = 0; i < node->as.call.arg_count; ++i)
                 if (!sem(node->as.call.args[i], scope, in_function, loop_depth, error))
                     return false;
             return true;
+        }
         case N_ARRAY:
             for (size_t i = 0; i < node->as.list.count; ++i)
                 if (!sem(node->as.list.items[i], scope, in_function, loop_depth, error)) return false;
