@@ -201,6 +201,11 @@ static bool test_gc_closure_retains_captured_array(void) {
         vm.upvalues = calloc(1, sizeof *vm.upvalues);
         vm.closures = calloc(1, sizeof *vm.closures);
         built = vm.arrays && vm.upvalues && vm.closures;
+        if (built) {
+            vm.array_capacity = 1;
+            vm.upvalue_capacity = 1;
+            vm.closure_capacity = 1;
+        }
     }
     if (built) {
         vm.arrays[vm.array_count++] = captured;
