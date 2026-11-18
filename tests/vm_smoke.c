@@ -185,6 +185,46 @@ static bool test_upvalue_open_close(void) {
     return open_ok && closed_ok;
 }
 
+static bool test_vm_shares_and_closes_open_upvalues(void) {
+    VM vm;
+    vm_init(&vm);
+    vm.stack[0] = value_number(10);
+    vm.stack[1] = value_number(15);
+    vm.stack[2] = value_number(20);
+    vm.stack_count = 3;
+
+    Upvalue *first = vm_capture_upvalue(&vm, 0);
+    Upvalue *same = vm_capture_upvalue(&vm, 0);
+    Upvalue *last = vm_capture_upvalue(&vm, 2);
+    bool shared = first && first == same && last && first != last &&
+        vm.open_upvalues == last && last->next_open == first;
+    if (shared) {
+        upvalue_set(same, value_number(11));
+        shared = vm.stack[0].as.number == 11 &&
+            upvalue_get(first).as.number == 11;
+    }
+
+    vm_close_upvalues(&vm, 2);
+    bool partial_close = vm.open_upvalues == first &&
+        last->location == &last->closed &&
+        first->location == &vm.stack[0];
+    vm.stack[2] = value_number(99);
+    partial_close = partial_close && upvalue_get(last).as.number == 20;
+
+    vm_close_upvalues(&vm, 0);
+    bool full_close = vm.open_upvalues == NULL &&
+        first->location == &first->closed;
+    vm.stack[0] = value_number(88);
+    full_close = full_close && upvalue_get(first).as.number == 11;
+
+    bool passed = shared && partial_close && full_close &&
+        vm.upvalue_count == 2;
+    if (!passed)
+        fprintf(stderr, "Open-upvalue lifecycle assertions failed\\n");
+    vm_free(&vm);
+    return passed;
+}
+
 static bool test_gc_closure_retains_captured_array(void) {
     Chunk chunk;
     VM vm;
@@ -292,6 +332,7 @@ int main(void) {
         !test_gc_circular_array_reference() ||
         !test_gc_shared_runtime_string() ||
         !test_upvalue_open_close() ||
+        !test_vm_shares_and_closes_open_upvalues() ||
         !test_gc_closure_retains_captured_array() ||
         !test_gc_function_local_root())
         return 1;
