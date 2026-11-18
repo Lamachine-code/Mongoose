@@ -1,0 +1,16 @@
+function outer()
+    let value = 10
+
+    function middle()
+        function inner()
+            value += 1
+            return value
+        stop
+        return inner
+    stop
+
+    return middle
+stop
+
+let factory = outer()
+print(factory()())
