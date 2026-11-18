@@ -443,7 +443,6 @@ static bool statement(Compiler*c,Node*n) {
             if (!emit_jump(c, OP_JUMP, n->token, &skip_body)) return false;
 
             Function *function = &c->functions[index];
-            chunk_unused:
             c->chunk->functions[function->index].offset = c->chunk->count;
 
             CompilerContext nested_context = {
