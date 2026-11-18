@@ -237,9 +237,12 @@ static bool test_gc_open_upvalue_roots_stack_value(void) {
     if (built) {
         vm.array_capacity = 1;
         vm.arrays[vm.array_count++] = captured;
-        vm.stack[0] = value_array(captured);
-        vm.stack_count = 1;
-        Upvalue *upvalue = vm_capture_upvalue(&vm, 0);
+        /* Use a high slot so bytecode execution below cannot reuse and
+           overwrite the captured stack location after it leaves the root range. */
+        const size_t captured_slot = VM_STACK_MAX - 1;
+        vm.stack[captured_slot] = value_array(captured);
+        vm.stack_count = captured_slot + 1;
+        Upvalue *upvalue = vm_capture_upvalue(&vm, captured_slot);
         built = upvalue != NULL;
         /* Simulate the stack slot leaving the ordinary root range. The open
            capture list must keep both the cell and its current value alive. */
