@@ -182,6 +182,36 @@ static bool register_dictionary(VM *vm, Dictionary *dictionary) {
     return true;
 }
 
+bool vm_register_closure(VM *vm, Closure *closure) {
+    if (!vm || !closure) return false;
+    if (vm->closure_count == vm->closure_capacity) {
+        size_t capacity;
+        if (!next_capacity(vm->closure_capacity, vm->closure_count + 1,
+                           sizeof *vm->closures, &capacity)) return false;
+        Closure **items = realloc(vm->closures, capacity * sizeof *items);
+        if (!items) return false;
+        vm->closures = items;
+        vm->closure_capacity = capacity;
+    }
+    vm->closures[vm->closure_count++] = closure;
+    return true;
+}
+
+bool vm_register_upvalue(VM *vm, Upvalue *upvalue) {
+    if (!vm || !upvalue) return false;
+    if (vm->upvalue_count == vm->upvalue_capacity) {
+        size_t capacity;
+        if (!next_capacity(vm->upvalue_capacity, vm->upvalue_count + 1,
+                           sizeof *vm->upvalues, &capacity)) return false;
+        Upvalue **items = realloc(vm->upvalues, capacity * sizeof *items);
+        if (!items) return false;
+        vm->upvalues = items;
+        vm->upvalue_capacity = capacity;
+    }
+    vm->upvalues[vm->upvalue_count++] = upvalue;
+    return true;
+}
+
 static bool dictionary_set(Dictionary *dictionary, String *key, Value value) {
     for (size_t i = 0; i < dictionary->count; ++i) {
         String *existing = dictionary->entries[i].key;
