@@ -195,22 +195,27 @@ static bool test_gc_closure_retains_captured_array(void) {
     Upvalue *upvalue = captured ? upvalue_new_closed(value_array(captured)) : NULL;
     Closure *closure = upvalue ? closure_new(0, 1) : NULL;
     bool built = captured && upvalue && closure;
+    bool array_registered = false;
+    bool upvalue_registered = false;
+    bool closure_registered = false;
     if (built) {
         closure->upvalues[0] = upvalue;
         vm.arrays = calloc(1, sizeof *vm.arrays);
-        vm.upvalues = calloc(1, sizeof *vm.upvalues);
-        vm.closures = calloc(1, sizeof *vm.closures);
-        built = vm.arrays && vm.upvalues && vm.closures;
+        built = vm.arrays != NULL;
         if (built) {
             vm.array_capacity = 1;
-            vm.upvalue_capacity = 1;
-            vm.closure_capacity = 1;
+            vm.arrays[vm.array_count++] = captured;
+            array_registered = true;
+            upvalue_registered = vm_register_upvalue(&vm, upvalue);
+            closure_registered = upvalue_registered &&
+                vm_register_closure(&vm, closure);
+            built = closure_registered;
         }
     }
+    if (!upvalue_registered) value_upvalue_free(upvalue);
+    if (!closure_registered) value_closure_free(closure);
+    if (!array_registered) value_array_free(captured);
     if (built) {
-        vm.arrays[vm.array_count++] = captured;
-        vm.upvalues[vm.upvalue_count++] = upvalue;
-        vm.closures[vm.closure_count++] = closure;
         vm.stack[vm.stack_count++] = value_closure(closure);
         vm.gc_threshold = 1;
         built = emit_ephemeral_arrays(&chunk, 70) &&
