@@ -1057,6 +1057,40 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 ip = function.offset;
                 break;
             }
+            case OP_CALL_VALUE: {
+                if (ip >= chunk->count) return VM_INVALID_BYTECODE;
+                uint8_t argument_count = chunk->code[ip++];
+                if (vm->stack_count < (size_t)argument_count + 1)
+                    return VM_STACK_UNDERFLOW;
+                size_t callee_slot = vm->stack_count - (size_t)argument_count - 1;
+                Value callee = vm->stack[callee_slot];
+                if (callee.type != VALUE_CLOSURE || !callee.as.closure)
+                    return VM_TYPE_ERROR;
+                Closure *closure = callee.as.closure;
+                if (!chunk->functions ||
+                    closure->function_index >= chunk->function_count)
+                    return VM_INVALID_BYTECODE;
+                FunctionInfo function = chunk->functions[closure->function_index];
+                if (function.offset >= chunk->count)
+                    return VM_INVALID_BYTECODE;
+                if (argument_count != function.arity)
+                    return VM_ARITY_ERROR;
+                if (vm->frame_count == VM_FRAMES_MAX)
+                    return VM_CALL_OVERFLOW;
+
+                /* Compact [callee, arg0, ...] into [arg0, ...]. This keeps
+                   the established frame convention: base points at arg0. */
+                for (size_t i = 0; i < argument_count; ++i)
+                    vm->stack[callee_slot + i] =
+                        vm->stack[callee_slot + i + 1];
+                --vm->stack_count;
+                vm->frames[vm->frame_count++] = (CallFrame){
+                    ip, callee_slot, closure->function_index,
+                    vm->error_line, closure
+                };
+                ip = function.offset;
+                break;
+            }
             case OP_RETURN: {
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 if (vm->frame_count == 0) {
