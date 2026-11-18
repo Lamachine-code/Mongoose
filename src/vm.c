@@ -251,6 +251,25 @@ void vm_close_upvalues(VM *vm, size_t first_stack_index) {
     }
 }
 
+/* A single OP_POP removes exactly the top slot. Closing only that slot keeps
+   unrelated open cells intact; frame unwinding still uses the range helper. */
+static void vm_close_upvalue_at(VM *vm, size_t stack_index) {
+    if (!vm || stack_index >= VM_STACK_MAX) return;
+    Upvalue **cursor = &vm->open_upvalues;
+    while (*cursor) {
+        size_t existing_index = (size_t)((*cursor)->location - vm->stack);
+        if (existing_index < stack_index) break;
+        if (existing_index == stack_index) {
+            Upvalue *upvalue = *cursor;
+            *cursor = upvalue->next_open;
+            upvalue->next_open = NULL;
+            upvalue_close(upvalue);
+            return;
+        }
+        cursor = &(*cursor)->next_open;
+    }
+}
+
 static bool dictionary_set(Dictionary *dictionary, String *key, Value value) {
     for (size_t i = 0; i < dictionary->count; ++i) {
         String *existing = dictionary->entries[i].key;
@@ -538,7 +557,7 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 break;
             case OP_POP:
                 if (vm->stack_count == 0) return VM_STACK_UNDERFLOW;
-                vm_close_upvalues(vm, vm->stack_count - 1);
+                vm_close_upvalue_at(vm, vm->stack_count - 1);
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 break;
             case OP_NEGATE:
