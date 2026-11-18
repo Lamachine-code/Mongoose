@@ -1,0 +1,14 @@
+function outer()
+    let value = 40
+
+    function inner()
+        value += 2
+        return value
+    stop
+
+    return inner
+stop
+
+let fn = outer()
+print(fn())
+print(fn())
