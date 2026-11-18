@@ -1,0 +1,9 @@
+function outer(value)
+    function inner()
+        return value
+    stop
+    return inner
+stop
+
+let fn = outer(7)
+print(fn(1))
