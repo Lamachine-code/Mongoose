@@ -489,10 +489,20 @@ static bool statement(Compiler*c,Node*n) {
     switch(n->kind) {
         case N_FUNCTION: {
             int index = find_function_declaration(c, n);
-            if (index < 0) return fail(c, n->token, "unregistered nested function");
+            if (index < 0 || !c->context)
+                return fail(c, n->token, "unregistered nested function");
 
-            /* Nested bodies are emitted out of the enclosing function's
-               execution path. The jump keeps normal execution in the parent. */
+            /* Reserve the function's local slot before creating the closure.
+               This also gives recursive closures a cell they can capture. */
+            uint8_t closure_slot;
+            if (!emit(c, OP_NIL, n->token) ||
+                !add_local(c, n->as.function.name, n->token, &closure_slot) ||
+                !emit_slot(c, OP_CLOSURE, (uint8_t)index, n->token) ||
+                !emit_slot(c, OP_SET_LOCAL, closure_slot, n->token) ||
+                !emit(c, OP_POP, n->token))
+                return false;
+
+            /* The nested body is stored out of the parent's execution path. */
             size_t skip_body;
             if (!emit_jump(c, OP_JUMP, n->token, &skip_body)) return false;
 
