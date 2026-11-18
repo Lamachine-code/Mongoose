@@ -313,6 +313,66 @@ static bool test_gc_closure_retains_captured_array(void) {
     return passed;
 }
 
+static bool test_vm_upvalue_read_write_opcodes(void) {
+    Chunk chunk;
+    VM vm;
+    chunk_init(&chunk);
+    vm_init(&vm);
+
+    Upvalue *upvalue = upvalue_new_closed(value_number(10));
+    Closure *closure = upvalue ? closure_new(0, 1) : NULL;
+    bool built = upvalue && closure;
+    if (built) {
+        closure->upvalues[0] = upvalue;
+        built = vm_register_upvalue(&vm, upvalue) &&
+                vm_register_closure(&vm, closure);
+    }
+    if (!built) {
+        if (closure && vm.closure_count == 0) value_closure_free(closure);
+        if (upvalue && vm.upvalue_count == 0) value_upvalue_free(upvalue);
+        vm_free(&vm);
+        chunk_free(&chunk);
+        return false;
+    }
+
+    /* The first return simulates returning from the closure's frame; the
+       second returns from the test's outer frame. */
+    built = emit(&chunk, OP_GET_UPVALUE) &&
+        chunk_write(&chunk, 0, 1) &&
+        emit(&chunk, OP_RETURN) &&
+        emit(&chunk, OP_RETURN);
+    vm.frames[0] = (CallFrame){2, 0, 0, 1, closure};
+    vm.frame_count = 1;
+    bool read_ok = built && vm_run(&vm, &chunk) == VM_OK &&
+        vm.result.type == VALUE_NUMBER && vm.result.as.number == 10;
+
+    chunk_free(&chunk);
+    chunk_init(&chunk);
+    vm.result = value_nil();
+    vm.frame_count = 1;
+    vm.frames[0] = (CallFrame){4, 0, 0, 1, closure};
+    vm.stack[0] = value_number(42);
+    vm.stack_count = 1;
+    built = emit(&chunk, OP_SET_UPVALUE) &&
+        chunk_write(&chunk, 0, 1) &&
+        emit(&chunk, OP_POP) &&
+        emit(&chunk, OP_GET_UPVALUE) &&
+        chunk_write(&chunk, 0, 1) &&
+        emit(&chunk, OP_RETURN) &&
+        emit(&chunk, OP_RETURN);
+    bool write_ok = built && vm_run(&vm, &chunk) == VM_OK &&
+        vm.result.type == VALUE_NUMBER && vm.result.as.number == 42 &&
+        upvalue_get(upvalue).type == VALUE_NUMBER &&
+        upvalue_get(upvalue).as.number == 42;
+
+    if (!read_ok || !write_ok)
+        fprintf(stderr, "Upvalue opcode assertions failed (read=%d, write=%d)\\n",
+                read_ok, write_ok);
+    vm_free(&vm);
+    chunk_free(&chunk);
+    return read_ok && write_ok;
+}
+
 static bool test_gc_function_local_root(void) {
     Chunk chunk;
     VM vm;
@@ -374,6 +434,7 @@ int main(void) {
         !test_vm_shares_and_closes_open_upvalues() ||
         !test_gc_open_upvalue_roots_stack_value() ||
         !test_gc_closure_retains_captured_array() ||
+        !test_vm_upvalue_read_write_opcodes() ||
         !test_gc_function_local_root())
         return 1;
 
