@@ -373,6 +373,91 @@ static bool test_vm_upvalue_read_write_opcodes(void) {
     return read_ok && write_ok;
 }
 
+static bool test_vm_closure_captures_local_and_closes_on_return(void) {
+    Chunk chunk;
+    VM vm;
+    uint8_t parent_index, child_index;
+    chunk_init(&chunk);
+    vm_init(&vm);
+
+    bool built = chunk_write_constant(&chunk, value_number(77), 1) &&
+        emit(&chunk, OP_CALL) && chunk_write(&chunk, 0, 1) &&
+        emit(&chunk, OP_RETURN);
+    size_t parent_offset = chunk.count;
+    built = built && emit(&chunk, OP_CLOSURE) &&
+        chunk_write(&chunk, 1, 1) &&
+        emit(&chunk, OP_RETURN);
+    size_t child_offset = chunk.count;
+    built = built && emit(&chunk, OP_NIL) && emit(&chunk, OP_RETURN) &&
+        chunk_add_function(&chunk, parent_offset, 1, "parent", 6, &parent_index) &&
+        chunk_add_function(&chunk, child_offset, 0, "child", 5, &child_index) &&
+        parent_index == 0 && child_index == 1;
+    if (built) {
+        chunk.functions[child_index].upvalue_count = 1;
+        chunk.functions[child_index].upvalues[0] =
+            (UpvalueDescriptor){.index = 0, .is_local = true};
+    }
+
+    bool passed = built && vm_run(&vm, &chunk) == VM_OK &&
+        vm.result.type == VALUE_CLOSURE && vm.result.as.closure &&
+        vm.result.as.closure->function_index == child_index &&
+        vm.result.as.closure->upvalue_count == 1 &&
+        vm.result.as.closure->upvalues[0] &&
+        vm.result.as.closure->upvalues[0]->location ==
+            &vm.result.as.closure->upvalues[0]->closed &&
+        upvalue_get(vm.result.as.closure->upvalues[0]).type == VALUE_NUMBER &&
+        upvalue_get(vm.result.as.closure->upvalues[0]).as.number == 77;
+    if (!passed)
+        fprintf(stderr, "Local closure capture/close assertions failed\\n");
+    vm_free(&vm);
+    chunk_free(&chunk);
+    return passed;
+}
+
+static bool test_vm_closure_reuses_parent_upvalue(void) {
+    Chunk chunk;
+    VM vm;
+    uint8_t parent_index, child_index;
+    chunk_init(&chunk);
+    vm_init(&vm);
+
+    Upvalue *shared = upvalue_new_closed(value_number(55));
+    Closure *parent = shared ? closure_new(0, 1) : NULL;
+    bool built = shared && parent;
+    if (built) {
+        parent->upvalues[0] = shared;
+        built = vm_register_upvalue(&vm, shared) &&
+            vm_register_closure(&vm, parent);
+    }
+    if (built) {
+        built = emit(&chunk, OP_CLOSURE) && chunk_write(&chunk, 1, 1) &&
+            emit(&chunk, OP_RETURN) && emit(&chunk, OP_RETURN) &&
+            chunk_add_function(&chunk, 0, 0, "parent", 6, &parent_index) &&
+            chunk_add_function(&chunk, 0, 0, "child", 5, &child_index) &&
+            parent_index == 0 && child_index == 1;
+    }
+    if (built) {
+        chunk.functions[child_index].upvalue_count = 1;
+        chunk.functions[child_index].upvalues[0] =
+            (UpvalueDescriptor){.index = 0, .is_local = false};
+        vm.frames[0] = (CallFrame){2, 0, parent_index, 1, parent};
+        vm.frame_count = 1;
+    } else {
+        if (parent && vm.closure_count == 0) value_closure_free(parent);
+        if (shared && vm.upvalue_count == 0) value_upvalue_free(shared);
+    }
+
+    bool passed = built && vm_run(&vm, &chunk) == VM_OK &&
+        vm.result.type == VALUE_CLOSURE && vm.result.as.closure &&
+        vm.result.as.closure->upvalue_count == 1 &&
+        vm.result.as.closure->upvalues[0] == shared;
+    if (!passed)
+        fprintf(stderr, "Transitive closure upvalue-sharing assertions failed\\n");
+    vm_free(&vm);
+    chunk_free(&chunk);
+    return passed;
+}
+
 static bool test_gc_function_local_root(void) {
     Chunk chunk;
     VM vm;
@@ -435,6 +520,8 @@ int main(void) {
         !test_gc_open_upvalue_roots_stack_value() ||
         !test_gc_closure_retains_captured_array() ||
         !test_vm_upvalue_read_write_opcodes() ||
+        !test_vm_closure_captures_local_and_closes_on_return() ||
+        !test_vm_closure_reuses_parent_upvalue() ||
         !test_gc_function_local_root())
         return 1;
 
