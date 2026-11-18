@@ -84,13 +84,13 @@ static int find_local(Compiler *c, Name n) {
     return -1;
 }
 static size_t *current_scope_depth(Compiler *c) {
-    return c->context ? &(*current_scope_depth(c)) : &c->global_scope_depth;
+    return c->context ? &c->context->scope_depth : &c->global_scope_depth;
 }
 static size_t *current_loop_depth(Compiler *c) {
-    return c->context ? &(*current_loop_depth(c)) : &c->global_loop_depth;
+    return c->context ? &c->context->loop_depth : &c->global_loop_depth;
 }
 static Loop *current_loops(Compiler *c) {
-    return c->context ? current_loops(c) : c->global_loops;
+    return c->context ? c->context->loops : c->global_loops;
 }
 static int find_function(Compiler *c, Name n) {
     for(size_t i=0;i<c->function_count;i++)
