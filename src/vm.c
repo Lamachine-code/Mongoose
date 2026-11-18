@@ -212,6 +212,45 @@ bool vm_register_upvalue(VM *vm, Upvalue *upvalue) {
     return true;
 }
 
+/* Keep open cells ordered by descending stack index. This makes closing all
+   captures belonging to a departing frame a bounded walk over the list head. */
+Upvalue *vm_capture_upvalue(VM *vm, size_t stack_index) {
+    if (!vm || stack_index >= vm->stack_count || stack_index >= VM_STACK_MAX)
+        return NULL;
+
+    Upvalue **cursor = &vm->open_upvalues;
+    while (*cursor) {
+        size_t existing_index =
+            (size_t)((*cursor)->location - vm->stack);
+        if (existing_index <= stack_index) break;
+        cursor = &(*cursor)->next_open;
+    }
+    if (*cursor && (*cursor)->location == &vm->stack[stack_index])
+        return *cursor;
+
+    Upvalue *upvalue = upvalue_new_open(&vm->stack[stack_index]);
+    if (!upvalue) return NULL;
+    if (!vm_register_upvalue(vm, upvalue)) {
+        value_upvalue_free(upvalue);
+        return NULL;
+    }
+    upvalue->next_open = *cursor;
+    *cursor = upvalue;
+    return upvalue;
+}
+
+void vm_close_upvalues(VM *vm, size_t first_stack_index) {
+    if (!vm || first_stack_index > VM_STACK_MAX) return;
+    while (vm->open_upvalues) {
+        Upvalue *upvalue = vm->open_upvalues;
+        size_t stack_index = (size_t)(upvalue->location - vm->stack);
+        if (stack_index < first_stack_index) break;
+        vm->open_upvalues = upvalue->next_open;
+        upvalue->next_open = NULL;
+        upvalue_close(upvalue);
+    }
+}
+
 static bool dictionary_set(Dictionary *dictionary, String *key, Value value) {
     for (size_t i = 0; i < dictionary->count; ++i) {
         String *existing = dictionary->entries[i].key;
