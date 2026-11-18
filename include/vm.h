@@ -28,5 +28,7 @@ typedef struct {
 } VM;
 void vm_init(VM *vm);
 void vm_free(VM *vm);
+bool vm_register_closure(VM *vm, Closure *closure);
+bool vm_register_upvalue(VM *vm, Upvalue *upvalue);
 VMResult vm_run(VM *vm, const Chunk *chunk);
 #endif
