@@ -11,7 +11,7 @@ typedef enum {
  VM_TYPE_ERROR, VM_DIVISION_BY_ZERO, VM_UNDEFINED_GLOBAL,
  VM_CALL_OVERFLOW, VM_ARITY_ERROR, VM_ARRAY_REQUIRED, VM_INDEX_ERROR, VM_OUT_OF_MEMORY, VM_UTF8_ERROR, VM_DICTIONARY_REQUIRED, VM_STRING_REQUIRED, VM_INDEXABLE_REQUIRED
 } VMResult;
-typedef struct { size_t return_ip; size_t base; uint8_t function_index; int call_line; } CallFrame;
+typedef struct { size_t return_ip; size_t base; uint8_t function_index; int call_line; Closure *closure; } CallFrame;
 typedef struct {
  Value stack[VM_STACK_MAX]; size_t stack_count;
  Value globals[VM_GLOBAL_MAX]; bool global_defined[VM_GLOBAL_MAX];
