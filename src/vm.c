@@ -537,6 +537,8 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (!push(vm, value_bool(false))) return VM_STACK_OVERFLOW;
                 break;
             case OP_POP:
+                if (vm->stack_count == 0) return VM_STACK_UNDERFLOW;
+                vm_close_upvalues(vm, vm->stack_count - 1);
                 if (!pop(vm, &a)) return VM_STACK_UNDERFLOW;
                 break;
             case OP_NEGATE:
@@ -701,6 +703,55 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 value_print(stdout, a);
                 fputc('\n', stdout);
                 break;
+            case OP_CLOSURE: {
+                if (ip >= chunk->count || vm->frame_count == 0 ||
+                    !chunk->functions)
+                    return VM_INVALID_BYTECODE;
+                uint8_t function_index = chunk->code[ip++];
+                if (function_index >= chunk->function_count)
+                    return VM_INVALID_BYTECODE;
+                FunctionInfo *function = &chunk->functions[function_index];
+                CallFrame *parent = &vm->frames[vm->frame_count - 1];
+                if (function->upvalue_count > CHUNK_UPVALUE_MAX)
+                    return VM_INVALID_BYTECODE;
+
+                Closure *closure = closure_new(function_index,
+                                               function->upvalue_count);
+                if (!closure) return VM_OUT_OF_MEMORY;
+                for (size_t i = 0; i < function->upvalue_count; ++i) {
+                    UpvalueDescriptor descriptor = function->upvalues[i];
+                    if (descriptor.is_local) {
+                        size_t absolute = parent->base + descriptor.index;
+                        if (absolute < parent->base ||
+                            absolute >= vm->stack_count) {
+                            value_closure_free(closure);
+                            return VM_INVALID_BYTECODE;
+                        }
+                        closure->upvalues[i] = vm_capture_upvalue(vm, absolute);
+                    } else {
+                        if (!parent->closure ||
+                            descriptor.index >= parent->closure->upvalue_count ||
+                            !parent->closure->upvalues ||
+                            !parent->closure->upvalues[descriptor.index]) {
+                            value_closure_free(closure);
+                            return VM_INVALID_BYTECODE;
+                        }
+                        closure->upvalues[i] =
+                            parent->closure->upvalues[descriptor.index];
+                    }
+                    if (!closure->upvalues[i]) {
+                        value_closure_free(closure);
+                        return VM_OUT_OF_MEMORY;
+                    }
+                }
+                if (!vm_register_closure(vm, closure)) {
+                    value_closure_free(closure);
+                    return VM_OUT_OF_MEMORY;
+                }
+                if (!push(vm, value_closure(closure)))
+                    return VM_STACK_OVERFLOW;
+                break;
+            }
             case OP_GET_UPVALUE:
             case OP_SET_UPVALUE: {
                 if (ip >= chunk->count || vm->frame_count == 0)
@@ -994,6 +1045,7 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                     return VM_OK;
                 }
                 CallFrame frame = vm->frames[--vm->frame_count];
+                vm_close_upvalues(vm, frame.base);
                 vm->stack_count = frame.base;
                 if (!push(vm, a)) return VM_STACK_OVERFLOW;
                 ip = frame.return_ip;
