@@ -225,6 +225,42 @@ static bool test_vm_shares_and_closes_open_upvalues(void) {
     return passed;
 }
 
+static bool test_gc_open_upvalue_roots_stack_value(void) {
+    Chunk chunk;
+    VM vm;
+    chunk_init(&chunk);
+    vm_init(&vm);
+
+    Array *captured = calloc(1, sizeof *captured);
+    vm.arrays = calloc(1, sizeof *vm.arrays);
+    bool built = captured && vm.arrays;
+    if (built) {
+        vm.array_capacity = 1;
+        vm.arrays[vm.array_count++] = captured;
+        vm.stack[0] = value_array(captured);
+        vm.stack_count = 1;
+        Upvalue *upvalue = vm_capture_upvalue(&vm, 0);
+        built = upvalue != NULL;
+        /* Simulate the stack slot leaving the ordinary root range. The open
+           capture list must keep both the cell and its current value alive. */
+        vm.stack_count = 0;
+        vm.gc_threshold = 1;
+        built = built && emit_ephemeral_arrays(&chunk, 70) &&
+            emit(&chunk, OP_NIL) && emit(&chunk, OP_RETURN);
+    }
+    bool passed = built && run_chunk(&chunk, &vm, "open upvalue roots stack value") &&
+        vm.gc_runs > 0 && vm.upvalue_count == 1 && vm.open_upvalues != NULL &&
+        vm.array_count <= 11 &&
+        upvalue_get(vm.open_upvalues).type == VALUE_ARRAY &&
+        upvalue_get(vm.open_upvalues).as.array == captured;
+    if (!passed)
+        fprintf(stderr, "Open-upvalue GC root assertions failed (runs=%zu, upvalues=%zu, arrays=%zu)\\n",
+                vm.gc_runs, vm.upvalue_count, vm.array_count);
+    vm_free(&vm);
+    chunk_free(&chunk);
+    return passed;
+}
+
 static bool test_gc_closure_retains_captured_array(void) {
     Chunk chunk;
     VM vm;
@@ -333,6 +369,7 @@ int main(void) {
         !test_gc_shared_runtime_string() ||
         !test_upvalue_open_close() ||
         !test_vm_shares_and_closes_open_upvalues() ||
+        !test_gc_open_upvalue_roots_stack_value() ||
         !test_gc_closure_retains_captured_array() ||
         !test_gc_function_local_root())
         return 1;
