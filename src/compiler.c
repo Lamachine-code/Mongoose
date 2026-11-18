@@ -10,7 +10,14 @@
 
 typedef struct { Name name; uint8_t slot; bool active; } Global;
 typedef struct { Name name; uint8_t slot; size_t depth; } Local;
-typedef struct { Name name; uint8_t index; uint8_t arity; } Function;
+typedef struct {
+    Name name;
+    uint8_t index;
+    uint8_t arity;
+    Node *declaration;
+    int parent_index;
+    bool top_level;
+} Function;
 typedef struct {
     size_t start;
     size_t break_variable_count, continue_variable_count;
@@ -93,9 +100,63 @@ static Loop *current_loops(Compiler *c) {
     return c->context ? c->context->loops : c->global_loops;
 }
 static int find_function(Compiler *c, Name n) {
-    for(size_t i=0;i<c->function_count;i++)
-        if(same_name(c->functions[i].name,n)) return (int)i;
+    /* Until closures are emitted, only root-level functions are directly callable. */
+    for (size_t i = 0; i < c->function_count; ++i)
+        if (c->functions[i].top_level && same_name(c->functions[i].name, n))
+            return (int)i;
     return -1;
+}
+
+static bool register_function(Compiler *c, Node *declaration,
+                              int parent_index, bool top_level) {
+    if (c->function_count == COMPILER_FUNCTION_MAX)
+        return fail(c, declaration->token, "too many functions");
+    if (declaration->as.function.param_count > UINT8_MAX)
+        return fail(c, declaration->token, "too many parameters");
+
+    uint8_t index = (uint8_t)c->function_count;
+    c->functions[c->function_count++] = (Function){
+        .name = declaration->as.function.name,
+        .index = index,
+        .arity = (uint8_t)declaration->as.function.param_count,
+        .declaration = declaration,
+        .parent_index = parent_index,
+        .top_level = top_level
+    };
+    return true;
+}
+
+/* Find declarations nested in a function body, preserving lexical ancestry.
+   This pass records prototypes only; nested bodies are not executable yet. */
+static bool discover_nested_functions(Compiler *c, Node *node,
+                                      int parent_index) {
+    if (!node) return true;
+    switch (node->kind) {
+        case N_FUNCTION: {
+            if (!register_function(c, node, parent_index, false)) return false;
+            int nested_index = (int)c->function_count - 1;
+            return discover_nested_functions(c, node->as.function.body,
+                                              nested_index);
+        }
+        case N_BLOCK:
+            for (size_t i = 0; i < node->as.list.count; ++i)
+                if (!discover_nested_functions(c, node->as.list.items[i],
+                                               parent_index)) return false;
+            return true;
+        case N_IF:
+            return discover_nested_functions(c, node->as.conditional.then_branch,
+                                             parent_index) &&
+                   discover_nested_functions(c, node->as.conditional.else_branch,
+                                             parent_index);
+        case N_WHILE:
+            return discover_nested_functions(c, node->as.loop.body, parent_index);
+        case N_FOR:
+            return discover_nested_functions(c, node->as.for_loop.body, parent_index);
+        case N_FOR_EACH:
+            return discover_nested_functions(c, node->as.for_each.body, parent_index);
+        default:
+            return true;
+    }
 }
 static bool add_global(Compiler *c, Name n, Token t, uint8_t *slot) {
     size_t mark = c->global_scope_depth
@@ -548,34 +609,56 @@ bool compile_ast(const Ast*ast,Chunk*chunk,Diagnostic*error) {
     Compiler c={.chunk=chunk,.error=error};
     Node*root=ast->root;
     if(root->kind!=N_PROGRAM)return fail(&c,root->token,"expected program root");
-    for(size_t i=0;i<root->as.list.count;i++)if(root->as.list.items[i]->kind==N_FUNCTION) {
-        Node*f=root->as.list.items[i];
-        if(c.function_count==COMPILER_FUNCTION_MAX)return fail(&c,f->token,"too many functions");
-        if(find_function(&c,f->as.function.name)>=0)return fail(&c,f->token,"duplicate function");
-        c.functions[c.function_count]=(Function){f->as.function.name,(uint8_t)c.function_count,(uint8_t)f->as.function.param_count};
-        if(f->as.function.param_count>UINT8_MAX)return fail(&c,f->token,"too many parameters");
-        ++c.function_count;
+    /* Register root functions first so their existing indices remain stable. */
+    for (size_t i = 0; i < root->as.list.count; ++i) {
+        Node *item = root->as.list.items[i];
+        if (item->kind != N_FUNCTION) continue;
+        for (size_t j = 0; j < c.function_count; ++j)
+            if (c.functions[j].top_level &&
+                same_name(c.functions[j].name, item->as.function.name))
+                return fail(&c, item->token, "duplicate function");
+        if (!register_function(&c, item, -1, true)) return false;
+    }
+    /* Then discover nested declarations under each root function. */
+    for (size_t i = 0; i < c.function_count; ++i) {
+        if (!c.functions[i].top_level) continue;
+        Node *declaration = c.functions[i].declaration;
+        if (!discover_nested_functions(&c, declaration->as.function.body,
+                                       (int)i)) return false;
+    }
+    /* Reserve prototype indices now. Nested offsets stay placeholders until
+       the later closure-compilation stage emits their bodies. */
+    for (size_t i = 0; i < c.function_count; ++i) {
+        Function *function = &c.functions[i];
+        uint8_t index;
+        if (!chunk_add_function(chunk, 0, function->arity,
+                                function->name.name, function->name.length,
+                                &index) || index != function->index)
+            return fail(&c, function->declaration->token,
+                        "cannot register function prototype");
     }
     for(size_t i=0;i<root->as.list.count;i++)if(root->as.list.items[i]->kind!=N_FUNCTION)
         if(!statement(&c,root->as.list.items[i]))return false;
     if(!emit(&c,OP_NIL,root->token)||!emit(&c,OP_RETURN,root->token))return false;
-    for(size_t i=0;i<root->as.list.count;i++)if(root->as.list.items[i]->kind==N_FUNCTION) {
-        Node*f=root->as.list.items[i];
-        uint8_t index;
-        if(!chunk_add_function(chunk,chunk->count,(uint8_t)f->as.function.param_count,f->as.function.name.name,f->as.function.name.length,&index))
-            return fail(&c,f->token,"cannot register function");
+    for (size_t i = 0; i < c.function_count; ++i) {
+        Function *function = &c.functions[i];
+        if (!function->top_level) continue;
+        Node *f = function->declaration;
+        chunk->functions[function->index].offset = chunk->count;
         CompilerContext function_context = {
             .parent = NULL,
-            .function_index = index
+            .function_index = function->index
         };
         c.context = &function_context;
-        for(size_t p=0;p<f->as.function.param_count;p++) {
+        for (size_t p = 0; p < f->as.function.param_count; ++p) {
             uint8_t slot;
-            if(!add_local(&c,f->as.function.params[p],f->token,&slot))return false;
+            if (!add_local(&c, f->as.function.params[p], f->token, &slot))
+                return false;
             (void)slot;
         }
-        if(!statement(&c,f->as.function.body))return false;
-        if(!emit(&c,OP_NIL,f->token)||!emit(&c,OP_RETURN,f->token))return false;
+        if (!statement(&c, f->as.function.body)) return false;
+        if (!emit(&c, OP_NIL, f->token) ||
+            !emit(&c, OP_RETURN, f->token)) return false;
         c.context = NULL;
     }
     return true;
