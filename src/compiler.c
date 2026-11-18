@@ -106,6 +106,11 @@ static int find_function(Compiler *c, Name n) {
             return (int)i;
     return -1;
 }
+static int find_function_declaration(Compiler *c, Node *declaration) {
+    for (size_t i = 0; i < c->function_count; ++i)
+        if (c->functions[i].declaration == declaration) return (int)i;
+    return -1;
+}
 
 static bool register_function(Compiler *c, Node *declaration,
                               int parent_index, bool top_level) {
@@ -428,7 +433,39 @@ static bool expression(Compiler*c,Node*n) {
 static bool statement(Compiler*c,Node*n) {
     if(!n)return true;
     switch(n->kind) {
-        case N_FUNCTION:return true;
+        case N_FUNCTION: {
+            int index = find_function_declaration(c, n);
+            if (index < 0) return fail(c, n->token, "unregistered nested function");
+
+            /* Nested bodies are emitted out of the enclosing function's
+               execution path. The jump keeps normal execution in the parent. */
+            size_t skip_body;
+            if (!emit_jump(c, OP_JUMP, n->token, &skip_body)) return false;
+
+            Function *function = &c->functions[index];
+            chunk_unused:
+            c->chunk->functions[function->index].offset = c->chunk->count;
+
+            CompilerContext nested_context = {
+                .parent = c->context,
+                .function_index = function->index
+            };
+            CompilerContext *parent_context = c->context;
+            c->context = &nested_context;
+
+            bool ok = true;
+            for (size_t p = 0; p < n->as.function.param_count && ok; ++p) {
+                uint8_t slot;
+                ok = add_local(c, n->as.function.params[p], n->token, &slot);
+            }
+            if (ok) ok = statement(c, n->as.function.body);
+            if (ok) ok = emit(c, OP_NIL, n->token) &&
+                         emit(c, OP_RETURN, n->token);
+
+            c->context = parent_context;
+            if (!ok) return false;
+            return patch_jump(c, skip_body, n->token);
+        }
         case N_VAR: {
             if((c->context != NULL)) {
                 uint8_t slot;
