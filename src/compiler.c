@@ -432,11 +432,29 @@ static bool expression(Compiler*c,Node*n) {
                 for(size_t i=0;i<3;i++)if(!expression(c,n->as.call.args[i]))return false;
                 return emit(c,OP_SUBSTRING,n->token);
             }
-            int fn=find_function(c,n->as.call.name);
-            if(fn<0)return fail(c,n->token,"unknown function in bytecode compiler");
-            if(n->as.call.arg_count!=c->functions[fn].arity)return fail_arity(c,n->token,n->as.call.name,c->functions[fn].arity,n->as.call.arg_count);
-            for(size_t i=0;i<n->as.call.arg_count;i++)if(!expression(c,n->as.call.args[i]))return false;
-            return emit_slot(c,OP_CALL,(uint8_t)fn,n->token);
+            int fn = n->as.call.name.length
+                ? find_function(c, n->as.call.name) : -1;
+            if (fn >= 0) {
+                if (n->as.call.arg_count != c->functions[fn].arity)
+                    return fail_arity(c, n->token, n->as.call.name,
+                                      c->functions[fn].arity,
+                                      n->as.call.arg_count);
+                for (size_t i = 0; i < n->as.call.arg_count; ++i)
+                    if (!expression(c, n->as.call.args[i])) return false;
+                return emit_slot(c, OP_CALL, (uint8_t)fn, n->token);
+            }
+
+            /* Indirect calls evaluate the callee first, then arguments.
+               The VM removes the callee slot before establishing the frame. */
+            if (!n->as.call.callee)
+                return fail(c, n->token, "missing callable expression");
+            if (n->as.call.arg_count > UINT8_MAX)
+                return fail(c, n->token, "too many call arguments");
+            if (!expression(c, n->as.call.callee)) return false;
+            for (size_t i = 0; i < n->as.call.arg_count; ++i)
+                if (!expression(c, n->as.call.args[i])) return false;
+            return emit(c, OP_CALL_VALUE, n->token) &&
+                   emit_byte(c, (uint8_t)n->as.call.arg_count, n->token);
         }
         case N_ASSIGN: {
             Node*t=n->as.assign.target;
