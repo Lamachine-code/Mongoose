@@ -107,6 +107,6 @@ bool chunk_add_function(Chunk *chunk, size_t offset, uint8_t arity,
     }
     *index = (uint8_t)chunk->function_count;
     chunk->functions[chunk->function_count++] =
-        (FunctionInfo){offset, arity, name, name_length};
+        (FunctionInfo){.offset = offset, .arity = arity, .name = name, .name_length = name_length};
     return true;
 }
