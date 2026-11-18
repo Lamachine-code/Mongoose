@@ -20,6 +20,9 @@ typedef struct {
  Array **arrays; size_t array_count, array_capacity;
  String **strings; size_t string_count, string_capacity;
  Dictionary **dictionaries; size_t dictionary_count, dictionary_capacity;
+ Closure **closures; size_t closure_count, closure_capacity;
+ Upvalue **upvalues; size_t upvalue_count, upvalue_capacity;
+ Upvalue *open_upvalues;
  size_t gc_threshold, gc_runs;
  CallFrame frames[VM_FRAMES_MAX]; size_t frame_count;
 } VM;
