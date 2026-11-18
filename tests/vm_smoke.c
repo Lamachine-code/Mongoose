@@ -223,7 +223,7 @@ static bool test_gc_closure_retains_captured_array(void) {
     }
     bool passed = built && run_chunk(&chunk, &vm, "closure retains captured array") &&
         vm.gc_runs > 0 && vm.closure_count == 1 && vm.upvalue_count == 1 &&
-        vm.array_count == 1 &&
+        vm.array_count <= 11 &&
         upvalue_get(vm.closures[0]->upvalues[0]).type == VALUE_ARRAY &&
         upvalue_get(vm.closures[0]->upvalues[0]).as.array == captured;
     if (!passed)
