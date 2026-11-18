@@ -1,0 +1,9 @@
+function outer()
+    let value = 10
+
+    function middle()
+        function inner()
+            print(value)
+        stop
+    stop
+stop
