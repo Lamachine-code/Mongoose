@@ -30,5 +30,7 @@ void vm_init(VM *vm);
 void vm_free(VM *vm);
 bool vm_register_closure(VM *vm, Closure *closure);
 bool vm_register_upvalue(VM *vm, Upvalue *upvalue);
+Upvalue *vm_capture_upvalue(VM *vm, size_t stack_index);
+void vm_close_upvalues(VM *vm, size_t first_stack_index);
 VMResult vm_run(VM *vm, const Chunk *chunk);
 #endif
