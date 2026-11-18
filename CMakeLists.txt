@@ -309,6 +309,12 @@ add_test(NAME runtime_creates_transitive_capture_closure COMMAND mongoose ${CMAK
 set_tests_properties(runtime_creates_transitive_capture_closure PROPERTIES PASS_REGULAR_EXPRESSION "<closure>")
 add_test(NAME runtime_invokes_returned_closure COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_closure_call.snake)
 set_tests_properties(runtime_invokes_returned_closure PROPERTIES PASS_REGULAR_EXPRESSION "42[\r\n]+44")
+add_test(NAME runtime_invokes_transitive_chained_closures COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_transitive_closure_call.snake)
+set_tests_properties(runtime_invokes_transitive_chained_closures PROPERTIES PASS_REGULAR_EXPRESSION "11")
+add_test(NAME runtime_closure_call_checks_arity COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_closure_call_arity.snake)
+set_tests_properties(runtime_closure_call_checks_arity PROPERTIES WILL_FAIL TRUE)
+add_test(NAME runtime_rejects_calling_non_closure COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_non_closure_call.snake)
+set_tests_properties(runtime_rejects_calling_non_closure PROPERTIES WILL_FAIL TRUE)
 
 
 # The parser and semantic analyzer accept expression-valued callees.
