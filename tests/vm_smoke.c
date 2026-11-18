@@ -232,24 +232,31 @@ static bool test_gc_open_upvalue_roots_stack_value(void) {
     vm_init(&vm);
 
     Array *captured = calloc(1, sizeof *captured);
-    vm.arrays = calloc(1, sizeof *vm.arrays);
+    vm.arrays = calloc(71, sizeof *vm.arrays);
     bool built = captured && vm.arrays;
     if (built) {
-        vm.array_capacity = 1;
+        vm.array_capacity = 71;
         vm.arrays[vm.array_count++] = captured;
-        /* Use a high slot so bytecode execution below cannot reuse and
-           overwrite the captured stack location after it leaves the root range. */
-        const size_t captured_slot = VM_STACK_MAX - 1;
-        vm.stack[captured_slot] = value_array(captured);
-        vm.stack_count = captured_slot + 1;
-        Upvalue *upvalue = vm_capture_upvalue(&vm, captured_slot);
+        /* Keep an open capture outside the ordinary root range. Populate the
+           registry with unreachable objects so the first VM instruction
+           triggers collection before it can reuse the captured stack slot. */
+        vm.stack[0] = value_array(captured);
+        vm.stack_count = 1;
+        Upvalue *upvalue = vm_capture_upvalue(&vm, 0);
         built = upvalue != NULL;
-        /* Simulate the stack slot leaving the ordinary root range. The open
-           capture list must keep both the cell and its current value alive. */
+        for (size_t i = 0; built && i < 70; ++i) {
+            Array *garbage = calloc(1, sizeof *garbage);
+            if (!garbage) {
+                built = false;
+                break;
+            }
+            vm.arrays[vm.array_count++] = garbage;
+        }
+        /* The open-upvalue list, not the normal stack root range, must retain
+           the captured value during the collection at vm_run entry. */
         vm.stack_count = 0;
         vm.gc_threshold = 1;
-        built = built && emit_ephemeral_arrays(&chunk, 70) &&
-            emit(&chunk, OP_NIL) && emit(&chunk, OP_RETURN);
+        built = built && emit(&chunk, OP_NIL) && emit(&chunk, OP_RETURN);
     }
     bool passed = built && run_chunk(&chunk, &vm, "open upvalue roots stack value") &&
         vm.gc_runs > 0 && vm.upvalue_count == 1 && vm.open_upvalues != NULL &&
