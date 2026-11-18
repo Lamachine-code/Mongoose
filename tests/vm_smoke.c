@@ -263,9 +263,14 @@ static bool test_gc_open_upvalue_roots_stack_value(void) {
         vm.array_count <= 11 &&
         upvalue_get(vm.open_upvalues).type == VALUE_ARRAY &&
         upvalue_get(vm.open_upvalues).as.array == captured;
-    if (!passed)
-        fprintf(stderr, "Open-upvalue GC root assertions failed (runs=%zu, upvalues=%zu, arrays=%zu)\\n",
-                vm.gc_runs, vm.upvalue_count, vm.array_count);
+    if (!passed) {
+        Upvalue *root = vm.open_upvalues;
+        Value retained = root ? upvalue_get(root) : value_nil();
+        fprintf(stderr, "Open-upvalue GC root assertions failed (runs=%zu, upvalues=%zu, arrays=%zu, open=%d, type=%d, same=%d)\\n",
+                vm.gc_runs, vm.upvalue_count, vm.array_count, root != NULL,
+                (int)retained.type,
+                retained.type == VALUE_ARRAY && retained.as.array == captured);
+    }
     vm_free(&vm);
     chunk_free(&chunk);
     return passed;
