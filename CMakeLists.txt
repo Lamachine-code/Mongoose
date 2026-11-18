@@ -304,5 +304,8 @@ add_test(NAME diagnostic_reports_unknown_function COMMAND ${CMAKE_COMMAND} -DPRO
 # Collection indices are bounded before allocation or growth.
 add_test(NAME runtime_array_rejects_index_above_limit COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_index_limit.snake "-DEXPECTED=invalid or out-of-range index" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_message.cmake)
 
+# The compiler identifies transitive lexical captures before upvalue bytecode exists.
+add_test(NAME compiler_discovers_transitive_upvalue_descriptors COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_upvalue_descriptor_chain.snake "-DEXPECTED=captured variable access bytecode is not implemented yet" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_diagnostic.cmake)
+
 # The parser and semantic analyzer accept expression-valued callees.
 add_test(NAME frontend_accepts_indirect_and_chained_calls COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/indirect_call_syntax.snake)
