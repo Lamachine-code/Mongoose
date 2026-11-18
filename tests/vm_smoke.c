@@ -350,7 +350,7 @@ static bool test_vm_upvalue_read_write_opcodes(void) {
     chunk_init(&chunk);
     vm.result = value_nil();
     vm.frame_count = 1;
-    vm.frames[0] = (CallFrame){4, 0, 0, 1, closure};
+    vm.frames[0] = (CallFrame){6, 0, 0, 1, closure};
     vm.stack[0] = value_number(42);
     vm.stack_count = 1;
     built = emit(&chunk, OP_SET_UPVALUE) &&
