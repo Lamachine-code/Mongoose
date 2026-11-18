@@ -1,6 +1,7 @@
 #include "chunk.h"
 #include "vm.h"
 #include <math.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -167,6 +168,62 @@ static bool test_gc_shared_runtime_string(void) {
     return passed;
 }
 
+static bool test_upvalue_open_close(void) {
+    Value slot = value_number(10);
+    Upvalue *upvalue = upvalue_new_open(&slot);
+    if (!upvalue) return false;
+    upvalue_set(upvalue, value_number(20));
+    bool open_ok = upvalue_get(upvalue).type == VALUE_NUMBER &&
+        upvalue_get(upvalue).as.number == 20;
+    upvalue_close(upvalue);
+    slot = value_number(30);
+    bool closed_ok = upvalue_get(upvalue).type == VALUE_NUMBER &&
+        upvalue_get(upvalue).as.number == 20;
+    upvalue_set(upvalue, value_number(40));
+    closed_ok = closed_ok && upvalue_get(upvalue).as.number == 40;
+    value_upvalue_free(upvalue);
+    return open_ok && closed_ok;
+}
+
+static bool test_gc_closure_retains_captured_array(void) {
+    Chunk chunk;
+    VM vm;
+    chunk_init(&chunk);
+    vm_init(&vm);
+
+    Array *captured = calloc(1, sizeof *captured);
+    Upvalue *upvalue = captured ? upvalue_new_closed(value_array(captured)) : NULL;
+    Closure *closure = upvalue ? closure_new(0, 1) : NULL;
+    bool built = captured && upvalue && closure;
+    if (built) {
+        closure->upvalues[0] = upvalue;
+        vm.arrays = calloc(1, sizeof *vm.arrays);
+        vm.upvalues = calloc(1, sizeof *vm.upvalues);
+        vm.closures = calloc(1, sizeof *vm.closures);
+        built = vm.arrays && vm.upvalues && vm.closures;
+    }
+    if (built) {
+        vm.arrays[vm.array_count++] = captured;
+        vm.upvalues[vm.upvalue_count++] = upvalue;
+        vm.closures[vm.closure_count++] = closure;
+        vm.stack[vm.stack_count++] = value_closure(closure);
+        vm.gc_threshold = 1;
+        built = emit_ephemeral_arrays(&chunk, 70) &&
+            emit(&chunk, OP_NIL) && emit(&chunk, OP_RETURN);
+    }
+    bool passed = built && run_chunk(&chunk, &vm, "closure retains captured array") &&
+        vm.gc_runs > 0 && vm.closure_count == 1 && vm.upvalue_count == 1 &&
+        vm.array_count == 1 &&
+        upvalue_get(vm.closures[0]->upvalues[0]).type == VALUE_ARRAY &&
+        upvalue_get(vm.closures[0]->upvalues[0]).as.array == captured;
+    if (!passed)
+        fprintf(stderr, "Closure-capture GC assertions failed (runs=%zu, closures=%zu, upvalues=%zu, arrays=%zu)\\n",
+                vm.gc_runs, vm.closure_count, vm.upvalue_count, vm.array_count);
+    vm_free(&vm);
+    chunk_free(&chunk);
+    return passed;
+}
+
 static bool test_gc_function_local_root(void) {
     Chunk chunk;
     VM vm;
@@ -224,6 +281,8 @@ int main(void) {
         !test_gc_dictionary_retains_array() ||
         !test_gc_circular_array_reference() ||
         !test_gc_shared_runtime_string() ||
+        !test_upvalue_open_close() ||
+        !test_gc_closure_retains_captured_array() ||
         !test_gc_function_local_root())
         return 1;
 
