@@ -4,6 +4,8 @@ function outer()
     function middle()
         function inner()
             print(value)
+            value += 1
+            value = value + 2
         stop
     stop
 stop
