@@ -232,22 +232,30 @@ static bool test_gc_open_upvalue_roots_stack_value(void) {
     vm_init(&vm);
 
     Array *captured = calloc(1, sizeof *captured);
-    vm.arrays = calloc(1, sizeof *vm.arrays);
+    vm.arrays = calloc(71, sizeof *vm.arrays);
     bool built = captured && vm.arrays;
     if (built) {
-        vm.array_capacity = 1;
+        vm.array_capacity = 71;
         vm.arrays[vm.array_count++] = captured;
-        /* Use a high slot so allocations below cannot overwrite its value. */
+        for (size_t i = 0; built && i < 70; ++i) {
+            Array *garbage = calloc(1, sizeof *garbage);
+            if (!garbage) {
+                built = false;
+                break;
+            }
+            vm.arrays[vm.array_count++] = garbage;
+        }
+        /* Capture a high slot, then remove it from the ordinary root range.
+           The VM reuses only slot zero while the open cell must retain slot 255. */
         const size_t captured_slot = VM_STACK_MAX - 1;
         vm.stack[captured_slot] = value_array(captured);
-        vm.stack_count = captured_slot + 1;
+        vm.stack_count = VM_STACK_MAX;
         Upvalue *upvalue = vm_capture_upvalue(&vm, captured_slot);
-        built = upvalue != NULL;
-        /* The open capture list must retain the value after it leaves the
-           ordinary stack root range, while lower slots are reused. */
-        vm.stack_count = 0;
+        built = built && upvalue != NULL;
+        vm.stack[0] = value_nil();
+        vm.stack_count = 1;
         vm.gc_threshold = 1;
-        built = built && emit_ephemeral_arrays(&chunk, 70) &&
+        built = built && emit(&chunk, OP_POP) &&
             emit(&chunk, OP_NIL) && emit(&chunk, OP_RETURN);
     }
     bool passed = built && run_chunk(&chunk, &vm, "open upvalue roots stack value") &&
