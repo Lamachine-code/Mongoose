@@ -305,7 +305,8 @@ add_test(NAME diagnostic_reports_unknown_function COMMAND ${CMAKE_COMMAND} -DPRO
 add_test(NAME runtime_array_rejects_index_above_limit COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:mongoose> -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_index_limit.snake "-DEXPECTED=invalid or out-of-range index" -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/assert_runtime_message.cmake)
 
 # Captured reads/writes compile after lexical upvalue resolution.
-add_test(NAME compiler_emits_transitive_upvalue_access COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_upvalue_descriptor_chain.snake)
+add_test(NAME runtime_creates_transitive_capture_closure COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_upvalue_descriptor_chain.snake)
+set_tests_properties(runtime_creates_transitive_capture_closure PROPERTIES PASS_REGULAR_EXPRESSION "<closure>")
 
 # The parser and semantic analyzer accept expression-valued callees.
 add_test(NAME frontend_accepts_indirect_and_chained_calls COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/indirect_call_syntax.snake)
