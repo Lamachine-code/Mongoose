@@ -36,6 +36,10 @@ typedef struct {
     size_t global_count;
     Function functions[COMPILER_FUNCTION_MAX];
     size_t function_count;
+    size_t global_scope_marks[COMPILER_SCOPE_MAX];
+    size_t global_scope_depth;
+    Loop global_loops[COMPILER_SCOPE_MAX];
+    size_t global_loop_depth;
     CompilerContext *context;
 } Compiler;
 
@@ -73,9 +77,20 @@ static int find_global(Compiler *c, Name n) {
     return -1;
 }
 static int find_local(Compiler *c, Name n) {
-    for(size_t i=c->context->local_count;i>0;--i)
-        if(same_name(c->context->locals[i-1].name,n)) return (int)c->context->locals[i-1].slot;
+    if (!c->context) return -1;
+    for (size_t i = c->context->local_count; i > 0; --i)
+        if (same_name(c->context->locals[i - 1].name, n))
+            return (int)c->context->locals[i - 1].slot;
     return -1;
+}
+static size_t *current_scope_depth(Compiler *c) {
+    return c->context ? &(*current_scope_depth(c)) : &c->global_scope_depth;
+}
+static size_t *current_loop_depth(Compiler *c) {
+    return c->context ? &(*current_loop_depth(c)) : &c->global_loop_depth;
+}
+static Loop *current_loops(Compiler *c) {
+    return c->context ? current_loops(c) : c->global_loops;
 }
 static int find_function(Compiler *c, Name n) {
     for(size_t i=0;i<c->function_count;i++)
@@ -83,43 +98,53 @@ static int find_function(Compiler *c, Name n) {
     return -1;
 }
 static bool add_global(Compiler *c, Name n, Token t, uint8_t *slot) {
-    size_t mark=c->context->scope_depth?c->context->scope_marks[c->context->scope_depth-1]:0;
-    for(size_t i=mark;i<c->global_count;i++)
-        if(c->globals[i].active&&same_name(c->globals[i].name,n))
-            return fail(c,t,"duplicate variable in the same scope");
-    if(c->global_count==COMPILER_GLOBAL_MAX)
-        return fail(c,t,"too many global variables");
-    *slot=(uint8_t)c->global_count;
-    c->globals[c->global_count++]=(Global){n,*slot,true}; return true;
+    size_t mark = c->global_scope_depth
+        ? c->global_scope_marks[c->global_scope_depth - 1] : 0;
+    for (size_t i = mark; i < c->global_count; ++i)
+        if (c->globals[i].active && same_name(c->globals[i].name, n))
+            return fail(c, t, "duplicate variable in the same scope");
+    if (c->global_count == COMPILER_GLOBAL_MAX)
+        return fail(c, t, "too many global variables");
+    *slot = (uint8_t)c->global_count;
+    c->globals[c->global_count++] = (Global){n, *slot, true};
+    return true;
 }
 static bool add_local(Compiler *c, Name n, Token t, uint8_t *slot) {
-    size_t mark=c->context->scope_depth?c->context->scope_marks[c->context->scope_depth-1]:0;
+    size_t mark=(*current_scope_depth(c))?c->context->scope_marks[(*current_scope_depth(c))-1]:0;
     for(size_t i=mark;i<c->context->local_count;i++)
         if(same_name(c->context->locals[i].name,n))
             return fail(c,t,"duplicate local variable in the same scope");
     if(c->context->local_count==COMPILER_LOCAL_MAX)
         return fail(c,t,"too many local variables");
     *slot=(uint8_t)c->context->local_count;
-    c->context->locals[c->context->local_count++]=(Local){n,*slot,c->context->scope_depth}; return true;
+    c->context->locals[c->context->local_count++]=(Local){n,*slot,(*current_scope_depth(c))}; return true;
 }
 static bool enter_scope(Compiler *c, Token t) {
-    if(c->context->scope_depth==COMPILER_SCOPE_MAX)
-        return fail(c,t,"compiler scope nesting limit exceeded");
-    c->context->scope_marks[c->context->scope_depth++]=(c->context != NULL)?c->context->local_count:c->global_count;
+    size_t *depth = current_scope_depth(c);
+    if (*depth == COMPILER_SCOPE_MAX)
+        return fail(c, t, "compiler scope nesting limit exceeded");
+    if (c->context)
+        c->context->scope_marks[(*depth)++] = c->context->local_count;
+    else
+        c->global_scope_marks[(*depth)++] = c->global_count;
     return true;
 }
 static bool leave_scope(Compiler *c, Token t) {
-    if(!c->context->scope_depth)return true;
-    size_t mark=c->context->scope_marks[--c->context->scope_depth];
-    if((c->context != NULL)) {
-        while(c->context->local_count>mark) {
-            if(!emit(c,OP_POP,t))return false;
+    size_t *depth = current_scope_depth(c);
+    if (!*depth) return true;
+    size_t mark = c->context
+        ? c->context->scope_marks[--(*depth)]
+        : c->global_scope_marks[--(*depth)];
+    if (c->context) {
+        while (c->context->local_count > mark) {
+            if (!emit(c, OP_POP, t)) return false;
             --c->context->local_count;
         }
     } else {
-        for(size_t i=mark;i<c->global_count;i++) {
-            if(c->globals[i].active && !emit_slot(c,OP_CLEAR_GLOBAL,c->globals[i].slot,t))return false;
-            c->globals[i].active=false;
+        for (size_t i = mark; i < c->global_count; ++i) {
+            if (c->globals[i].active &&
+                !emit_slot(c, OP_CLEAR_GLOBAL, c->globals[i].slot, t)) return false;
+            c->globals[i].active = false;
         }
     }
     return true;
@@ -363,9 +388,9 @@ static bool statement(Compiler*c,Node*n) {
             return patch_jump(c,end,n->token);
         }
         case N_WHILE: {
-            if (c->context->loop_depth == COMPILER_SCOPE_MAX)
+            if ((*current_loop_depth(c)) == COMPILER_SCOPE_MAX)
                 return fail(c, n->token, "loop nesting limit exceeded");
-            Loop *loop = &c->context->loops[c->context->loop_depth++];
+            Loop *loop = &current_loops(c)[(*current_loop_depth(c))++];
             memset(loop, 0, sizeof *loop);
             loop->start = c->chunk->count;
             loop->break_variable_count = (c->context != NULL) ? c->context->local_count : c->global_count;
@@ -378,13 +403,13 @@ static bool statement(Compiler*c,Node*n) {
                       patch_jump(c, exit, n->token);
             for (size_t i = 0; ok && i < loop->break_count; ++i)
                 ok = patch_jump(c, loop->break_jumps[i], n->token);
-            --c->context->loop_depth;
+            --(*current_loop_depth(c));
             return ok;
         }
         case N_FOR: {
-            if(c->context->loop_depth==COMPILER_SCOPE_MAX)return fail(c,n->token,"loop nesting limit exceeded");
+            if((*current_loop_depth(c))==COMPILER_SCOPE_MAX)return fail(c,n->token,"loop nesting limit exceeded");
             if(!enter_scope(c,n->token))return false;
-            Loop *loop=&c->context->loops[c->context->loop_depth++];memset(loop,0,sizeof *loop);
+            Loop *loop=&current_loops(c)[(*current_loop_depth(c))++];memset(loop,0,sizeof *loop);
             loop->break_variable_count=(c->context != NULL)?c->context->local_count:c->global_count;
             static const char hidden_name[]="\001for_end";
             Name hidden={hidden_name,sizeof hidden_name-1};
@@ -406,16 +431,16 @@ static bool statement(Compiler*c,Node*n) {
             if(ok)ok=emit(c,OP_ADD,n->token);
             if(ok)ok=(c->context != NULL)?emit_slot(c,OP_SET_LOCAL,var_slot,n->token):emit_slot(c,OP_SET_GLOBAL,var_slot,n->token);
             if(ok)ok=emit(c,OP_POP,n->token)&&emit_loop(c,loop->start,n->token)&&patch_jump(c,exit,n->token);
-            --c->context->loop_depth;
+            --(*current_loop_depth(c));
             bool cleaned=leave_scope(c,n->token);
             for(size_t i=0;ok&&cleaned&&i<loop->break_count;i++)ok=patch_jump(c,loop->break_jumps[i],n->token);
             return ok&&cleaned;
         }
         case N_FOR_EACH: {
-            if (c->context->loop_depth == COMPILER_SCOPE_MAX)
+            if ((*current_loop_depth(c)) == COMPILER_SCOPE_MAX)
                 return fail(c, n->token, "loop nesting limit exceeded");
             if (!enter_scope(c, n->token)) return false;
-            Loop *loop = &c->context->loops[c->context->loop_depth++];
+            Loop *loop = &current_loops(c)[(*current_loop_depth(c))++];
             memset(loop, 0, sizeof *loop);
             loop->break_variable_count = (c->context != NULL) ? c->context->local_count : c->global_count;
             static const char array_name[] = "\001for_array";
@@ -482,15 +507,15 @@ static bool statement(Compiler*c,Node*n) {
                          emit(c, OP_POP, n->token) &&
                          emit_loop(c, loop->start, n->token) &&
                          patch_jump(c, exit, n->token);
-            --c->context->loop_depth;
+            --(*current_loop_depth(c));
             bool cleaned = leave_scope(c, n->token);
             for (size_t i = 0; ok && cleaned && i < loop->break_count; ++i)
                 ok = patch_jump(c, loop->break_jumps[i], n->token);
             return ok && cleaned;
         }
         case N_BREAK: {
-            if (!c->context->loop_depth) return fail(c, n->token, "break outside loop");
-            Loop *loop = &c->context->loops[c->context->loop_depth - 1];
+            if (!(*current_loop_depth(c))) return fail(c, n->token, "break outside loop");
+            Loop *loop = &current_loops(c)[(*current_loop_depth(c)) - 1];
             if (loop->break_count == sizeof loop->break_jumps / sizeof loop->break_jumps[0])
                 return fail(c, n->token, "too many break statements in loop");
             if (!emit_loop_cleanup(c, loop->break_variable_count, n->token)) return false;
@@ -498,8 +523,8 @@ static bool statement(Compiler*c,Node*n) {
                              &loop->break_jumps[loop->break_count++]);
         }
         case N_CONTINUE: {
-            if (!c->context->loop_depth) return fail(c,n->token,"continue outside loop");
-            Loop *loop=&c->context->loops[c->context->loop_depth-1];
+            if (!(*current_loop_depth(c))) return fail(c,n->token,"continue outside loop");
+            Loop *loop=&current_loops(c)[(*current_loop_depth(c))-1];
             if (!emit_loop_cleanup(c,loop->continue_variable_count,n->token)) return false;
             if (!loop->continue_to_increment) return emit_loop(c,loop->start,n->token);
             if (loop->continue_count==256) return fail(c,n->token,"too many continue statements in loop");
