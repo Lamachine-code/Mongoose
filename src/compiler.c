@@ -10,7 +10,6 @@
 
 typedef struct { Name name; uint8_t slot; bool active; } Global;
 typedef struct { Name name; uint8_t slot; size_t depth; } Local;
-typedef struct { uint8_t index; bool is_local; } UpvalueDescriptor;
 typedef struct {
     Name name;
     uint8_t index;
@@ -94,8 +93,7 @@ static int find_local(Compiler *c, Name n) {
     return -1;
 }
 
-/* Upvalue descriptors are metadata: they describe how a nested function
-   reaches a variable, but do not emit access bytecode yet. */
+/* Resolve lexical captures and emit bytecode that accesses the current closure. */
 static int find_local_in_context(CompilerContext *context, Name name) {
     if (!context) return -1;
     for (size_t i = context->local_count; i > 0; --i)
@@ -358,7 +356,7 @@ static bool expression(Compiler*c,Node*n) {
             if(slot>=0)return emit_slot(c,OP_GET_LOCAL,(uint8_t)slot,n->token);
             uint8_t upvalue;
             if (c->context && resolve_upvalue(c, c->context, n->as.name, &upvalue))
-                return fail(c,n->token,"captured variable access bytecode is not implemented yet");
+                return emit_slot(c, OP_GET_UPVALUE, upvalue, n->token);
             slot=find_global(c,n->as.name);
             if(slot<0)return fail(c,n->token,"unknown variable in bytecode compiler");
             return emit_slot(c,OP_GET_GLOBAL,(uint8_t)slot,n->token);
@@ -470,8 +468,12 @@ static bool expression(Compiler*c,Node*n) {
                 return emit_slot(c,OP_SET_LOCAL,(uint8_t)slot,n->token);
             }
             uint8_t upvalue;
-            if (c->context && resolve_upvalue(c, c->context, t->as.name, &upvalue))
-                return fail(c,n->token,"captured variable assignment bytecode is not implemented yet");
+            if (c->context && resolve_upvalue(c, c->context, t->as.name, &upvalue)) {
+                if (compound && !emit_slot(c, OP_GET_UPVALUE, upvalue, n->token)) return false;
+                if (!expression(c, n->as.assign.value)) return false;
+                if (compound && !emit(c, arithmetic, n->token)) return false;
+                return emit_slot(c, OP_SET_UPVALUE, upvalue, n->token);
+            }
             slot=find_global(c,t->as.name);
             if(slot<0)return fail(c,n->token,"assignment to unknown variable");
             if(compound && !emit_slot(c,OP_GET_GLOBAL,(uint8_t)slot,n->token))return false;
@@ -748,6 +750,18 @@ bool compile_ast(const Ast*ast,Chunk*chunk,Diagnostic*error) {
         if (!emit(&c, OP_NIL, f->token) ||
             !emit(&c, OP_RETURN, f->token)) return false;
         c.context = NULL;
+    }
+    /* Copy compiler-resolved capture recipes into immutable prototype metadata.
+       Runtime closure creation will consume these descriptors in the next stage. */
+    for (size_t i = 0; i < c.function_count; ++i) {
+        Function *function = &c.functions[i];
+        FunctionInfo *prototype = &chunk->functions[function->index];
+        if (function->upvalue_count > CHUNK_UPVALUE_MAX)
+            return fail(&c, function->declaration->token,
+                        "too many captured variables");
+        prototype->upvalue_count = function->upvalue_count;
+        for (size_t j = 0; j < function->upvalue_count; ++j)
+            prototype->upvalues[j] = function->upvalues[j];
     }
     return true;
 }
