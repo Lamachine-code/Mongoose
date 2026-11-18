@@ -38,7 +38,7 @@ struct Node {
   struct { Name name; Node *start, *end, *body; } for_loop;
   struct { Name name; Node *iterable, *body; } for_each;
   struct { Name name; Name *params; size_t param_count; Node *body; } function;
-  struct { Name name; Node **args; size_t arg_count, arg_capacity; } call;
+  struct { Node *callee; Name name; Node **args; size_t arg_count, arg_capacity; } call;
   struct { Node *target, *index; } index;
   struct { Node *value; } ret;
   struct { Node *target, *value; } assign;
