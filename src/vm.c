@@ -983,7 +983,7 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 if (vm->stack_count < function.arity) return VM_STACK_UNDERFLOW;
                 if (vm->frame_count == VM_FRAMES_MAX) return VM_CALL_OVERFLOW;
                 size_t base = vm->stack_count - function.arity;
-                vm->frames[vm->frame_count++] = (CallFrame){ip, base, index, vm->error_line};
+                vm->frames[vm->frame_count++] = (CallFrame){ip, base, index, vm->error_line, NULL};
                 ip = function.offset;
                 break;
             }
