@@ -86,7 +86,7 @@ set_tests_properties(runtime_short_circuits_or PROPERTIES PASS_REGULAR_EXPRESSIO
 
 add_test(NAME runtime_executes_golden_master COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/golden-master.snake)
 add_test(NAME runtime_reads_and_writes_arrays COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_index.snake)
-set_tests_properties(runtime_reads_and_writes_arrays PROPERTIES PASS_REGULAR_EXPRESSION "42")
+set_tests_properties(runtime_reads_and_writes_arrays PROPERTIES PASS_REGULAR_EXPRESSION "42[\r\n]+44")
 add_test(NAME runtime_passes_arrays_by_reference COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_reference.snake)
 set_tests_properties(runtime_passes_arrays_by_reference PROPERTIES PASS_REGULAR_EXPRESSION "99")
 add_test(NAME runtime_grows_arrays_on_indexed_write COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_array_growth.snake)
@@ -307,6 +307,9 @@ add_test(NAME runtime_array_rejects_index_above_limit COMMAND ${CMAKE_COMMAND} -
 # Captured reads/writes compile after lexical upvalue resolution.
 add_test(NAME runtime_creates_transitive_capture_closure COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/compiler_upvalue_descriptor_chain.snake)
 set_tests_properties(runtime_creates_transitive_capture_closure PROPERTIES PASS_REGULAR_EXPRESSION "<closure>")
+add_test(NAME runtime_invokes_returned_closure COMMAND mongoose ${CMAKE_CURRENT_SOURCE_DIR}/tests/runtime_closure_call.snake)
+set_tests_properties(runtime_invokes_returned_closure PROPERTIES PASS_REGULAR_EXPRESSION "42")
+
 
 # The parser and semantic analyzer accept expression-valued callees.
 add_test(NAME frontend_accepts_indirect_and_chained_calls COMMAND mongoose_check ${CMAKE_CURRENT_SOURCE_DIR}/tests/indirect_call_syntax.snake)
