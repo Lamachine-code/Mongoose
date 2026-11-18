@@ -10,6 +10,7 @@
 
 typedef struct { Name name; uint8_t slot; bool active; } Global;
 typedef struct { Name name; uint8_t slot; size_t depth; } Local;
+typedef struct { uint8_t index; bool is_local; } UpvalueDescriptor;
 typedef struct {
     Name name;
     uint8_t index;
@@ -17,6 +18,8 @@ typedef struct {
     Node *declaration;
     int parent_index;
     bool top_level;
+    UpvalueDescriptor upvalues[COMPILER_LOCAL_MAX];
+    size_t upvalue_count;
 } Function;
 typedef struct {
     size_t start;
@@ -89,6 +92,49 @@ static int find_local(Compiler *c, Name n) {
         if (same_name(c->context->locals[i - 1].name, n))
             return (int)c->context->locals[i - 1].slot;
     return -1;
+}
+
+/* Upvalue descriptors are metadata: they describe how a nested function
+   reaches a variable, but do not emit access bytecode yet. */
+static int find_local_in_context(CompilerContext *context, Name name) {
+    if (!context) return -1;
+    for (size_t i = context->local_count; i > 0; --i)
+        if (same_name(context->locals[i - 1].name, name))
+            return (int)context->locals[i - 1].slot;
+    return -1;
+}
+
+static bool add_upvalue(Compiler *c, CompilerContext *context,
+                        bool is_local, uint8_t index, uint8_t *result) {
+    Function *function = &c->functions[context->function_index];
+    for (size_t i = 0; i < function->upvalue_count; ++i) {
+        UpvalueDescriptor descriptor = function->upvalues[i];
+        if (descriptor.is_local == is_local && descriptor.index == index) {
+            *result = (uint8_t)i;
+            return true;
+        }
+    }
+    if (function->upvalue_count == COMPILER_LOCAL_MAX)
+        return fail(c, function->declaration->token, "too many captured variables");
+    size_t slot = function->upvalue_count++;
+    function->upvalues[slot] = (UpvalueDescriptor){index, is_local};
+    *result = (uint8_t)slot;
+    return true;
+}
+
+/* Resolve through lexical parents. A descriptor either points to a local
+   slot in the immediate parent, or to an upvalue in that parent. */
+static bool resolve_upvalue(Compiler *c, CompilerContext *context,
+                            Name name, uint8_t *result) {
+    if (!context || !context->parent) return false;
+    int local = find_local_in_context(context->parent, name);
+    if (local >= 0)
+        return add_upvalue(c, context, true, (uint8_t)local, result);
+
+    uint8_t parent_upvalue;
+    if (!resolve_upvalue(c, context->parent, name, &parent_upvalue))
+        return false;
+    return add_upvalue(c, context, false, parent_upvalue, result);
 }
 static size_t *current_scope_depth(Compiler *c) {
     return c->context ? &c->context->scope_depth : &c->global_scope_depth;
@@ -310,6 +356,9 @@ static bool expression(Compiler*c,Node*n) {
         case N_IDENT: {
             int slot=(c->context != NULL)?find_local(c,n->as.name):-1;
             if(slot>=0)return emit_slot(c,OP_GET_LOCAL,(uint8_t)slot,n->token);
+            uint8_t upvalue;
+            if (c->context && resolve_upvalue(c, c->context, n->as.name, &upvalue))
+                return fail(c,n->token,"captured variable access bytecode is not implemented yet");
             slot=find_global(c,n->as.name);
             if(slot<0)return fail(c,n->token,"unknown variable in bytecode compiler");
             return emit_slot(c,OP_GET_GLOBAL,(uint8_t)slot,n->token);
@@ -420,6 +469,9 @@ static bool expression(Compiler*c,Node*n) {
                 if(compound && !emit(c,arithmetic,n->token))return false;
                 return emit_slot(c,OP_SET_LOCAL,(uint8_t)slot,n->token);
             }
+            uint8_t upvalue;
+            if (c->context && resolve_upvalue(c, c->context, t->as.name, &upvalue))
+                return fail(c,n->token,"captured variable assignment bytecode is not implemented yet");
             slot=find_global(c,t->as.name);
             if(slot<0)return fail(c,n->token,"assignment to unknown variable");
             if(compound && !emit_slot(c,OP_GET_GLOBAL,(uint8_t)slot,n->token))return false;
