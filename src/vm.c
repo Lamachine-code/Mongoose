@@ -361,6 +361,11 @@ static void collect_garbage(VM *vm, const Chunk *chunk) {
     for (size_t i = 0; i < VM_GLOBAL_MAX; ++i)
         if (vm->global_defined[i]) (void)mark_value(vm->globals[i]);
     (void)mark_value(vm->result);
+    /* A running frame keeps its closure alive even if it is no longer on
+       the operand stack. */
+    for (size_t i = 0; i < vm->frame_count; ++i)
+        if (vm->frames[i].closure)
+            (void)mark_value(value_closure(vm->frames[i].closure));
     for (size_t i = 0; i < chunk->constant_count; ++i)
         (void)mark_value(chunk->constants[i]);
     /* An open capture cell must survive even before a closure references it. */
@@ -696,6 +701,27 @@ VMResult vm_run(VM *vm, const Chunk *chunk) {
                 value_print(stdout, a);
                 fputc('\n', stdout);
                 break;
+            case OP_GET_UPVALUE:
+            case OP_SET_UPVALUE: {
+                if (ip >= chunk->count || vm->frame_count == 0)
+                    return VM_INVALID_BYTECODE;
+                uint8_t slot = chunk->code[ip++];
+                CallFrame *frame = &vm->frames[vm->frame_count - 1];
+                if (!frame->closure ||
+                    slot >= frame->closure->upvalue_count ||
+                    !frame->closure->upvalues ||
+                    !frame->closure->upvalues[slot])
+                    return VM_INVALID_BYTECODE;
+                Upvalue *upvalue = frame->closure->upvalues[slot];
+                if (instruction == OP_GET_UPVALUE) {
+                    if (!push(vm, upvalue_get(upvalue)))
+                        return VM_STACK_OVERFLOW;
+                } else {
+                    if (vm->stack_count == 0) return VM_STACK_UNDERFLOW;
+                    upvalue_set(upvalue, vm->stack[vm->stack_count - 1]);
+                }
+                break;
+            }
             case OP_GET_LOCAL:
             case OP_SET_LOCAL: {
                 if (ip >= chunk->count || vm->frame_count == 0)
