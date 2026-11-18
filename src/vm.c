@@ -19,6 +19,12 @@ void vm_free(VM *vm) {
     for (size_t i = 0; i < vm->dictionary_count; ++i)
         value_dictionary_free(vm->dictionaries[i]);
     free(vm->dictionaries);
+    for (size_t i = 0; i < vm->closure_count; ++i)
+        value_closure_free(vm->closures[i]);
+    free(vm->closures);
+    for (size_t i = 0; i < vm->upvalue_count; ++i)
+        value_upvalue_free(vm->upvalues[i]);
+    free(vm->upvalues);
     *vm = (VM){0};
 }
 
@@ -256,6 +262,12 @@ static bool mark_value(Value value) {
                 return true;
             }
             break;
+        case VALUE_CLOSURE:
+            if (value.as.closure && !value.as.closure->marked) {
+                value.as.closure->marked = true;
+                return true;
+            }
+            break;
         default:
             break;
     }
@@ -267,7 +279,11 @@ static size_t object_count(const VM *vm) {
     if (vm->string_count > SIZE_MAX - total) return SIZE_MAX;
     total += vm->string_count;
     if (vm->dictionary_count > SIZE_MAX - total) return SIZE_MAX;
-    return total + vm->dictionary_count;
+    total += vm->dictionary_count;
+    if (vm->closure_count > SIZE_MAX - total) return SIZE_MAX;
+    total += vm->closure_count;
+    if (vm->upvalue_count > SIZE_MAX - total) return SIZE_MAX;
+    return total + vm->upvalue_count;
 }
 
 static void collect_garbage(VM *vm, const Chunk *chunk) {
@@ -278,6 +294,10 @@ static void collect_garbage(VM *vm, const Chunk *chunk) {
     (void)mark_value(vm->result);
     for (size_t i = 0; i < chunk->constant_count; ++i)
         (void)mark_value(chunk->constants[i]);
+    /* An open capture cell must survive even before a closure references it. */
+    for (Upvalue *upvalue = vm->open_upvalues; upvalue;
+         upvalue = upvalue->next_open)
+        upvalue->marked = true;
 
     bool changed;
     do {
@@ -299,6 +319,22 @@ static void collect_garbage(VM *vm, const Chunk *chunk) {
                 }
                 if (mark_value(dictionary->entries[j].value)) changed = true;
             }
+        }
+        for (size_t i = 0; i < vm->closure_count; ++i) {
+            Closure *closure = vm->closures[i];
+            if (!closure->marked) continue;
+            for (size_t j = 0; j < closure->upvalue_count; ++j) {
+                Upvalue *upvalue = closure->upvalues[j];
+                if (upvalue && !upvalue->marked) {
+                    upvalue->marked = true;
+                    changed = true;
+                }
+            }
+        }
+        for (size_t i = 0; i < vm->upvalue_count; ++i) {
+            Upvalue *upvalue = vm->upvalues[i];
+            if (upvalue->marked && mark_value(upvalue_get(upvalue)))
+                changed = true;
         }
     } while (changed);
 
@@ -337,6 +373,30 @@ static void collect_garbage(VM *vm, const Chunk *chunk) {
         }
     }
     vm->string_count = kept;
+
+    kept = 0;
+    for (size_t i = 0; i < vm->closure_count; ++i) {
+        Closure *closure = vm->closures[i];
+        if (closure->marked) {
+            closure->marked = false;
+            vm->closures[kept++] = closure;
+        } else {
+            value_closure_free(closure);
+        }
+    }
+    vm->closure_count = kept;
+
+    kept = 0;
+    for (size_t i = 0; i < vm->upvalue_count; ++i) {
+        Upvalue *upvalue = vm->upvalues[i];
+        if (upvalue->marked) {
+            upvalue->marked = false;
+            vm->upvalues[kept++] = upvalue;
+        } else {
+            value_upvalue_free(upvalue);
+        }
+    }
+    vm->upvalue_count = kept;
 
     size_t live = object_count(vm);
     vm->gc_threshold = live > SIZE_MAX / 2 ? SIZE_MAX : live * 2;
